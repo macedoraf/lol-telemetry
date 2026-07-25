@@ -16,25 +16,41 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
 func main() {
-	payloadPath := os.Getenv("MOCK_PAYLOAD")
-	if payloadPath == "" {
-		payloadPath = "/app/mocks/allgamedata.json"
+	mockDir := os.Getenv("MOCK_DIR")
+	if mockDir == "" {
+		mockDir = "/app/mocks"
 	}
 
 	apiMux := http.NewServeMux()
-	apiMux.HandleFunc("/liveclientdata/allgamedata", func(w http.ResponseWriter, r *http.Request) {
-		data, err := os.ReadFile(payloadPath)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(data)
-	})
+
+	// Static endpoints served from the mock directory.
+	endpoints := map[string]string{
+		"/liveclientdata/activeplayername":           "activeplayername.json",
+		"/liveclientdata/activeplayerabilities":      "activeplayerabilities.json",
+		"/liveclientdata/activeplayerrunes":          "activeplayerrunes.json",
+		"/liveclientdata/playerlist":                 "playerlist.json",
+		"/liveclientdata/playerscores":               "playerscores.json",
+		"/liveclientdata/playersummonerspells":      "playersummonerspells.json",
+		"/liveclientdata/playermainrunes":            "playermainrunes.json",
+		"/liveclientdata/playeritems":                "playeritems.json",
+		"/liveclientdata/eventdata":                  "eventdata.json",
+		"/liveclientdata/gamestats":                  "gamestats.json",
+	}
+	for route, filename := range endpoints {
+		apiMux.HandleFunc(route, serveFile(filepath.Join(mockDir, filename)))
+	}
+
+	// /allgamedata can still be overridden by MOCK_PAYLOAD for backward compatibility.
+	payloadPath := os.Getenv("MOCK_PAYLOAD")
+	if payloadPath == "" {
+		payloadPath = filepath.Join(mockDir, "allgamedata.json")
+	}
+	apiMux.HandleFunc("/liveclientdata/allgamedata", serveFile(payloadPath))
 
 	healthMux := http.NewServeMux()
 	healthMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +90,18 @@ func main() {
 	log.Println("Mock LoL API listening on https://0.0.0.0:2999")
 	if err := apiServer.ListenAndServeTLS("", ""); err != nil {
 		log.Fatalf("api server: %v", err)
+	}
+}
+
+func serveFile(path string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(data)
 	}
 }
 

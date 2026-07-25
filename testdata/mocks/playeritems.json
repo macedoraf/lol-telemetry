@@ -1,0 +1,13 @@
+[
+  {
+    "canUse": true,
+    "consumable": false,
+    "count": 1,
+    "displayName": "Warding Totem (Trinket)",
+    "itemID": 3340,
+    "price": 0,
+    "rawDescription": "game_item_description_3340",
+    "rawDisplayName": "game_item_displayname_3340",
+    "slot": 6
+  }
+]

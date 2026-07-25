@@ -1,4 +1,4 @@
-// Package main is the CLI entrypoint. It wires the collector, processor, and
+// Package main is the CLI entrypoint. It wires the riotclient and the debugger
 // renderer together with zero business logic.
 package main
 
@@ -7,13 +7,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"lol-telemetry/internal/processor"
 	"lol-telemetry/internal/renderer"
-	"lol-telemetry/internal/types"
 	"lol-telemetry/pkg/riotclient"
 )
 
@@ -41,35 +39,8 @@ func main() {
 		return
 	}
 
-	model := renderer.NewModel()
-	program := tea.NewProgram(model)
-
-	go func() {
-		for {
-			data, err := fetchGameData(client, mockPath)
-			if err != nil {
-				program.Send(types.DashboardState{
-					Error:   err.Error(),
-					Waiting: false,
-				})
-				time.Sleep(2 * time.Second)
-				continue
-			}
-
-			stats, err := processor.Calculate(data)
-			if err != nil {
-				program.Send(types.DashboardState{
-					Error:   err.Error(),
-					Waiting: false,
-				})
-				time.Sleep(2 * time.Second)
-				continue
-			}
-
-			program.Send(types.DashboardState{Stats: stats})
-			time.Sleep(2 * time.Second)
-		}
-	}()
+	model := renderer.NewDebugger(client)
+	program := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)

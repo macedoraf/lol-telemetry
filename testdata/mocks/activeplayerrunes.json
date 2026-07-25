@@ -1,0 +1,72 @@
+{
+  "generalRunes": [
+    {
+      "displayName": "Electrocute",
+      "id": 8112,
+      "rawDescription": "perk_tooltip_Electrocute",
+      "rawDisplayName": "perk_displayname_Electrocute"
+    },
+    {
+      "displayName": "Cheap Shot",
+      "id": 8126,
+      "rawDescription": "perk_tooltip_CheapShot",
+      "rawDisplayName": "perk_displayname_CheapShot"
+    },
+    {
+      "displayName": "Eyeball Collection",
+      "id": 8138,
+      "rawDescription": "perk_tooltip_EyeballCollection",
+      "rawDisplayName": "perk_displayname_EyeballCollection"
+    },
+    {
+      "displayName": "Relentless Hunter",
+      "id": 8105,
+      "rawDescription": "perk_tooltip_8105",
+      "rawDisplayName": "perk_displayname_8105"
+    },
+    {
+      "displayName": "Celerity",
+      "id": 8234,
+      "rawDescription": "perk_tooltip_Celerity",
+      "rawDisplayName": "perk_displayname_Celerity"
+    },
+    {
+      "displayName": "Gathering Storm",
+      "id": 8236,
+      "rawDescription": "perk_tooltip_GatheringStorm",
+      "rawDisplayName": "perk_displayname_GatheringStorm"
+    }
+  ],
+  "keystone": {
+    "displayName": "Electrocute",
+    "id": 8112,
+    "rawDescription": "perk_tooltip_Electrocute",
+    "rawDisplayName": "perk_displayname_Electrocute"
+  },
+  "primaryRuneTree": {
+    "displayName": "Domination",
+    "id": 8100,
+    "rawDescription": "perkstyle_tooltip_7200",
+    "rawDisplayName": "perkstyle_displayname_7200"
+  },
+  "secondaryRuneTree": {
+    "displayName": "Sorcery",
+    "id": 8200,
+    "rawDescription": "perkstyle_tooltip_7202",
+    "rawDisplayName": "perkstyle_displayname_7202"
+  },
+  "statRunes": [
+    {
+      "id": 5008,
+      "rawDescription": "perk_tooltip_StatModAdaptive"
+    },
+    {
+      "id": 5003,
+      "rawDescription": "perk_tooltip_StatModMagicResist"
+    },
+    {
+      "id": 5003,
+      "rawDescription": "perk_tooltip_StatModMagicResist"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "summonerSpellOne": {
+    "displayName": "Flash",
+    "rawDescription": "GeneratedTip_SummonerSpell_SummonerFlash_Description",
+    "rawDisplayName": "GeneratedTip_SummonerSpell_SummonerFlash_DisplayName"
+  },
+  "summonerSpellTwo": {
+    "displayName": "Ignite",
+    "rawDescription": "GeneratedTip_SummonerSpell_SummonerDot_Description",
+    "rawDisplayName": "GeneratedTip_SummonerSpell_SummonerDot_DisplayName"
+  }
+}

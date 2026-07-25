@@ -1,0 +1,20 @@
+{
+  "keystone": {
+    "displayName": "Electrocute",
+    "id": 8112,
+    "rawDescription": "perk_tooltip_Electrocute",
+    "rawDisplayName": "perk_displayname_Electrocute"
+  },
+  "primaryRuneTree": {
+    "displayName": "Domination",
+    "id": 8100,
+    "rawDescription": "perkstyle_tooltip_7200",
+    "rawDisplayName": "perkstyle_displayname_7200"
+  },
+  "secondaryRuneTree": {
+    "displayName": "Sorcery",
+    "id": 8200,
+    "rawDescription": "perkstyle_tooltip_7202",
+    "rawDisplayName": "perkstyle_displayname_7202"
+  }
+}

@@ -13,6 +13,84 @@ Test the TUI dashboard instantly without an active game client:
 go run cmd/lol-cli/main.go --mock testdata/mocks/allgamedata.json
 ```
 
+## Examples & Use Cases
+
+### Building a Game Overlay
+
+The SDK can be used directly in your own Go application to power a real-time overlay, a web dashboard, or any other tool that needs live telemetry. The example below polls the Live Client Data API once per second and prints the latest game stats and event. In a real overlay, you would push this data to a UI layer (Wails, Electron, a web socket, etc.) instead of printing to stdout.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"lol-telemetry/pkg/riotclient"
+)
+
+func main() {
+	// The SDK client is preconfigured with InsecureSkipVerify so it can talk
+	// to the self-signed certificate served by the LoL client on 127.0.0.1:2999.
+	client := riotclient.NewClient()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	name, err := client.GetActivePlayerName()
+	if err != nil {
+		log.Printf("Unable to fetch active player name (is a game running?): %v", err)
+	} else {
+		fmt.Printf("Active player: %s\n", name)
+	}
+
+	// Poll the local server at a conservative rate. Riot recommends keeping
+	// Live Client Data API traffic low to avoid impacting the LoL client.
+	// 1 request per second is a reasonable maximum for a lightweight overlay.
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("Shutting down overlay...")
+			return
+		case <-ticker.C:
+			stats, err := client.GetGameStats()
+			if err != nil {
+				log.Printf("game stats error: %v", err)
+				continue
+			}
+			fmt.Printf("[%s] Game time: %.2f\n", stats.GameMode, stats.GameTime)
+
+			events, err := client.GetEventData()
+			if err != nil {
+				log.Printf("event data error: %v", err)
+				continue
+			}
+			if len(events.Events) > 0 {
+				last := events.Events[len(events.Events)-1]
+				fmt.Printf("Last event: %s (t=%.2f)\n", last.EventName, last.EventTime)
+			}
+		}
+	}
+}
+```
+
+A fully compilable version of this example is available in [`examples/overlay/main.go`](examples/overlay/main.go).
+
+### Best practices
+
+* **Polling rate:** Keep the request rate low. A maximum of **1 request per second** is recommended for a lightweight overlay. Higher rates can degrade the performance of the League of Legends client.
+* **TLS certificate:** The LoL client serves the Live Client Data API over HTTPS with a self-signed certificate. The SDK client is preconfigured with `InsecureSkipVerify: true` to connect without manual certificate management.
+* **Graceful shutdown:** Use a `context.Context` driven by `os.Interrupt`/`SIGTERM` so the polling loop exits cleanly when the user closes the overlay.
+* **Error handling:** Always handle API errors. The LoL client only exposes the API while a game is running, so transient failures are expected between matches.
+
 ## Testing with Docker Compose
 
 A containerized test stack is provided for reproducible builds and integration tests without installing a local Go toolchain or running the League of Legends client.

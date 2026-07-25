@@ -1,0 +1,36 @@
+{
+  "E": {
+    "abilityLevel": 0,
+    "displayName": "Molten Shield",
+    "id": "AnnieE",
+    "rawDescription": "GeneratedTip_Spell_AnnieE_Description",
+    "rawDisplayName": "GeneratedTip_Spell_AnnieE_DisplayName"
+  },
+  "Passive": {
+    "displayName": "Pyromania",
+    "id": "AnniePassive",
+    "rawDescription": "GeneratedTip_Passive_AnniePassive_Description",
+    "rawDisplayName": "GeneratedTip_Passive_AnniePassive_DisplayName"
+  },
+  "Q": {
+    "abilityLevel": 0,
+    "displayName": "Disintegrate",
+    "id": "AnnieQ",
+    "rawDescription": "GeneratedTip_Spell_AnnieQ_Description",
+    "rawDisplayName": "GeneratedTip_Spell_AnnieQ_DisplayName"
+  },
+  "R": {
+    "abilityLevel": 0,
+    "displayName": "Summon: Tibbers",
+    "id": "AnnieR",
+    "rawDescription": "GeneratedTip_Spell_AnnieR_Description",
+    "rawDisplayName": "GeneratedTip_Spell_AnnieR_DisplayName"
+  },
+  "W": {
+    "abilityLevel": 0,
+    "displayName": "Incinerate",
+    "id": "AnnieW",
+    "rawDescription": "GeneratedTip_Spell_AnnieW_Description",
+    "rawDisplayName": "GeneratedTip_Spell_AnnieW_DisplayName"
+  }
+}

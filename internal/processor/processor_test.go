@@ -19,12 +19,16 @@ func TestCalculate(t *testing.T) {
 			input: riotclient.AllGameData{
 				ActivePlayer: riotclient.ActivePlayer{
 					SummonerName: "Player",
-					ChampionName: "Ashe",
 					Level:        12,
 					CurrentGold:  3000,
-					Scores: riotclient.Scores{
-						CreepScore:           100,
-						NeutralMinionsKilled: 20,
+				},
+				AllPlayers: []riotclient.AllPlayer{
+					{
+						SummonerName: "Player",
+						ChampionName: "Ashe",
+						Scores: riotclient.PlayerScores{
+							CreepScore: 120,
+						},
 					},
 				},
 				GameData: riotclient.GameData{GameTime: 600},
@@ -45,12 +49,16 @@ func TestCalculate(t *testing.T) {
 			input: riotclient.AllGameData{
 				ActivePlayer: riotclient.ActivePlayer{
 					SummonerName: "Player",
-					ChampionName: "Lux",
 					Level:        6,
 					CurrentGold:  3000,
-					Scores: riotclient.Scores{
-						CreepScore:           50,
-						NeutralMinionsKilled: 0,
+				},
+				AllPlayers: []riotclient.AllPlayer{
+					{
+						SummonerName: "Player",
+						ChampionName: "Lux",
+						Scores: riotclient.PlayerScores{
+							CreepScore: 50,
+						},
 					},
 				},
 				GameData: riotclient.GameData{GameTime: 300},
@@ -71,9 +79,6 @@ func TestCalculate(t *testing.T) {
 			input: riotclient.AllGameData{
 				ActivePlayer: riotclient.ActivePlayer{
 					CurrentGold: 1000,
-					Scores: riotclient.Scores{
-						CreepScore: 10,
-					},
 				},
 				GameData: riotclient.GameData{GameTime: 0},
 			},
