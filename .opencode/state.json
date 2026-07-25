@@ -1,0 +1,63 @@
+{
+  "project": "lol-telemetry",
+  "currentFeature": "001-periodic-judge-hook",
+  "phase": "QA_PLANNING_DONE",
+  "features": {
+    "feature01": {
+      "name": "Core Telemetry & Processor MVP",
+      "status": "COMPLETED",
+      "phase": "DONE"
+    },
+    "feature02": {
+      "name": "Docker Compose Testing Environment",
+      "status": "COMPLETED",
+      "phase": "DONE"
+    },
+    "feature03": {
+      "name": "How to Generate a Windows Artifact",
+      "status": "COMPLETED",
+      "phase": "DONE"
+    },
+    "feature04": {
+      "name": "Core Data Model Adherence (allgamedata)",
+      "status": "COMPLETED",
+      "phase": "DONE"
+    },
+    "feature05": {
+      "name": "Live Client API Endpoint Abstractions",
+      "status": "COMPLETED",
+      "phase": "DONE"
+    },
+    "feature06": {
+      "name": "Usage Examples and Overlay Documentation",
+      "status": "COMPLETED",
+      "phase": "DONE"
+    },
+    "feature07": {
+      "name": "Interactive CLI Monitor and Debugger",
+      "status": "COMPLETED",
+      "phase": "DONE"
+    },
+    "feature08": {
+      "name": "Interactive CLI Monitor and Debugger",
+      "status": "PENDING",
+      "phase": "PENDING_SPEC"
+    },
+    "001-periodic-judge-hook": {
+      "name": "Periodic Judge Hook",
+      "status": "READY_FOR_QA",
+      "phase": "DOCUMENTATION_DONE",
+      "artifacts": [
+        "docs/features/001-periodic-judge-hook-functional.md",
+        "docs/features/001-periodic-judge-hook-technical.md",
+        "docs/features/001-periodic-judge-hook-testing.md",
+        "docs/features/001-periodic-judge-hook-tracking.md",
+        "CHANGELOG.md",
+        "AGENTS.md"
+      ],
+      "nextStep": "QA_REVIEW",
+      "retry_count": 0,
+      "blockers": []
+    }
+  }
+}

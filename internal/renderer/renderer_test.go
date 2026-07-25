@@ -152,6 +152,23 @@ func TestDebuggerStaleFetchResultIgnored(t *testing.T) {
 	}
 }
 
+func TestDebuggerAdviceMsgUpdatesLastAdvice(t *testing.T) {
+	m := NewDebuggerWithRoutes(nil, []route{
+		{name: "route1", fetch: func(*riotclient.Client) (string, error) { return "body", nil }},
+	})
+	m = updateModel(m, tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	m = updateModel(m, AdviceMsg{Advice: "Push mid."})
+	if m.lastAdvice != "Push mid." {
+		t.Errorf("lastAdvice = %q, want Push mid.", m.lastAdvice)
+	}
+
+	view := m.View()
+	if !strings.Contains(view, "Push mid.") {
+		t.Errorf("View() should display advice, got %q", view)
+	}
+}
+
 func TestDebuggerTickProducesCommands(t *testing.T) {
 	m := NewDebuggerWithRoutes(nil, []route{
 		{name: "route1", fetch: func(*riotclient.Client) (string, error) { return "", nil }},
