@@ -32,19 +32,25 @@ type fetchMsg struct {
 // tickMsg triggers the next periodic fetch.
 type tickMsg struct{}
 
+// AdviceMsg carries a Judge response to be rendered.
+type AdviceMsg struct {
+	Advice string
+}
+
 // Model is the Bubble Tea model for the debugger TUI.
 type Model struct {
-	client   *riotclient.Client
-	routes   []route
-	cursor   int
-	focused  string // "sidebar" or "viewport"
-	online   bool
-	content  string
-	lastErr  string
-	viewport viewport.Model
-	width    int
-	height   int
-	ready    bool
+	client     *riotclient.Client
+	routes     []route
+	cursor     int
+	focused    string // "sidebar" or "viewport"
+	online     bool
+	content    string
+	lastErr    string
+	viewport   viewport.Model
+	width      int
+	height     int
+	ready      bool
+	lastAdvice string
 }
 
 // NewDebugger creates a new debugger model wired to the given client.
@@ -182,6 +188,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.fetch())
 		cmds = append(cmds, m.tick())
 
+	case AdviceMsg:
+		m.lastAdvice = msg.Advice
+
 	case fetchMsg:
 		// Ignore stale responses for a route that is no longer selected.
 		if msg.route != m.currentRoute().name {
@@ -290,7 +299,7 @@ func (m Model) sidebarView() string {
 		Render(strings.Join(lines, "\n"))
 }
 
-// statusBar renders the online/offline indicator and help text.
+// statusBar renders the online/offline indicator, last Judge advice, and help text.
 func (m Model) statusBar() string {
 	status := "OFFLINE"
 	color := offlineColor
@@ -304,6 +313,18 @@ func (m Model) statusBar() string {
 		Foreground(color).
 		Render("● " + status)
 
+	advice := m.lastAdvice
+	if advice == "" {
+		advice = "Waiting for Judge advice..."
+	}
+	adviceStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Width(m.width - 54)
+	if len(advice) > adviceStyle.GetWidth() && adviceStyle.GetWidth() > 0 {
+		advice = advice[:adviceStyle.GetWidth()-3] + "..."
+	}
+	adviceText := adviceStyle.Render(advice)
+
 	help := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#888888")).
 		Render("↑/↓/j/k navigate • Tab switch focus • q/Esc quit")
@@ -311,7 +332,8 @@ func (m Model) statusBar() string {
 	return lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		indicator,
-		lipgloss.NewStyle().Width(m.width-50).Render(""),
+		lipgloss.NewStyle().Width(2).Render(""),
+		adviceText,
 		help,
 	)
 }
@@ -371,17 +393,17 @@ const (
 
 var (
 	cursorStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Background(lipgloss.Color("#5A56E0"))
+			Bold(true).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Background(lipgloss.Color("#5A56E0"))
 
 	sidebarStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FFFFFF"))
+			Foreground(lipgloss.Color("#FFFFFF"))
 
 	sidebarBlurStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#888888"))
+				Foreground(lipgloss.Color("#888888"))
 
 	viewportStyle = lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		Padding(0, 1)
+			Border(lipgloss.NormalBorder()).
+			Padding(0, 1)
 )
