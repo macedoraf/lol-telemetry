@@ -1,0 +1,33 @@
+{
+  "activePlayer": {
+    "summonerName": "Player",
+    "level": 12,
+    "currentGold": 3500.0,
+    "championName": "Ashe",
+    "scores": {
+      "creepScore": 120,
+      "neutralMinionsKilled": 20
+    }
+  },
+  "allPlayers": [
+    {
+      "summonerName": "Player",
+      "team": "ORDER",
+      "level": 12,
+      "championName": "Ashe",
+      "isBot": false,
+      "scores": {
+        "creepScore": 120,
+        "neutralMinionsKilled": 20
+      }
+    }
+  ],
+  "events": {
+    "Events": []
+  },
+  "gameData": {
+    "gameTime": 600.0,
+    "mapName": "Summoner's Rift",
+    "mapNumber": 11
+  }
+}

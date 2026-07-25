@@ -1,0 +1,53 @@
+# Reproducible Docker Compose environment for testing lol-telemetry without a
+# running League of Legends client or a local Go toolchain.
+#
+# Usage:
+#   docker compose up --build      # run all tests + CLI smoke test
+#   docker compose up mock-api -d    # start the mock API for ad-hoc testing
+services:
+  mock-api:
+    build:
+      context: .
+      dockerfile: test/mocksrv/Dockerfile
+    ports:
+      - "2999:2999"
+      - "8080:8080"
+    volumes:
+      - ./testdata/mocks:/app/mocks:ro
+    networks:
+      - lol-telemetry-test
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      mock-api:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - go-cache:/go/pkg/mod
+    networks:
+      - lol-telemetry-test
+    environment:
+      - MOCK_API_URL=https://mock-api:2999/liveclientdata
+    command:
+      - sh
+      - -c
+      - |
+        go test ./... &&
+        go test -tags=integration ./pkg/riotclient &&
+        go run cmd/lol-cli/main.go --mock testdata/mocks/allgamedata.json --smoke-test
+
+networks:
+  lol-telemetry-test:
+    driver: bridge
+
+volumes:
+  go-cache:

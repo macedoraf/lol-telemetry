@@ -1,0 +1,6 @@
+.tools/go/
+.tools/lol-cli
+*.exe
+*.test
+*.out
+vendor/
