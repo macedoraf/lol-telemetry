@@ -31,21 +31,47 @@ Provide clear, reproducible instructions and a lightweight build helper for prod
   3. Prints the path and size.
 - The script should be executable on Unix-like systems (macOS/Linux) and in WSL/Git Bash on Windows.
 
-### 2.5 Documentation Updates
+### 2.5 GitHub Actions Workflow
+- Add `.github/workflows/build-windows.yml` that triggers on every push and pull request.
+- The workflow runs on `ubuntu-latest` and uses the repository's `Makefile` target `build-windows`.
+- It uploads the produced `dist/lol-cli.exe` as a workflow artifact named `lol-cli-windows` so the artifact can be downloaded from the GitHub Actions UI.
+- The workflow also runs `go test ./...` to ensure the artifact is only built from a green test suite.
+
+### 2.6 Semantic Versioning & Release
+- Add `.github/workflows/release-windows.yml` that triggers on:
+  - Tag pushes matching `v*.*.*` (semantic versioning, e.g., `v1.0.0`).
+  - Pushes to the `main` branch.
+- The workflow runs on `ubuntu-latest` and:
+  1. Checks out the commit.
+  2. Runs `go test ./...`.
+  3. Runs `make build-windows` to produce `dist/lol-cli.exe`.
+  4. Creates a GitHub Release using a generated release name.
+  5. Attaches `dist/lol-cli.exe` as a release asset.
+- For tag pushes, the release title should be the tag name (e.g., `v1.0.0`).
+- For `main` branch pushes, the release name should include a timestamp or commit short SHA (e.g., `main-20260725-abc123`) so each push produces a unique, overwritable pre-release or snapshot release.
+- The release body should list the attached artifact and a brief usage note.
+
+### 2.7 Documentation Updates
 - Update `README.md` with both the manual command and the `make build-windows` shortcut.
+- Add a "GitHub Actions" subsection describing the automated Windows build artifact.
+- Add a "Releasing" subsection explaining how to push a semantic version tag (`git tag v1.0.0 && git push origin v1.0.0`) to trigger the release workflow.
 - Keep existing Docker Compose and mock-mode instructions intact.
 - Optionally add a note that the produced Windows artifact runs in a terminal and supports both live mode and `--mock` mode.
 
 ## 3. Out of Scope
 - Windows installer (`.msi`) or packaged app.
-- GitHub Actions CI/CD pipeline for automated releases.
 - Code signing for the Windows executable.
 - 32-bit (`GOARCH=386`) or ARM builds.
+- Publishing artifacts to a package registry outside GitHub Releases.
 
 ## 4. Acceptance Criteria
-- [ ] `README.md` contains a "Build a Windows Artifact" section with both the manual `go build` command and the `make build-windows` shortcut.
-- [ ] `Makefile` exists with `build-windows`, `build`, `clean`, and `help` targets.
-- [ ] `scripts/build-windows.sh` exists and produces `dist/lol-cli.exe` when executed.
-- [ ] `.gitignore` ignores the `dist/` directory.
-- [ ] Running `make build-windows` on a clean repository succeeds and creates a non-empty `dist/lol-cli.exe`.
-- [ ] Running `make clean` removes the `dist/` directory.
+- [x] `README.md` contains a "Build a Windows Artifact" section with both the manual `go build` command and the `make build-windows` shortcut.
+- [x] `Makefile` exists with `build-windows`, `build`, `clean`, and `help` targets.
+- [x] `scripts/build-windows.sh` exists and produces `dist/lol-cli.exe` when executed.
+- [x] `.gitignore` ignores the `dist/` directory.
+- [x] Running `make build-windows` on a clean repository succeeds and creates a non-empty `dist/lol-cli.exe`.
+- [x] Running `make clean` removes the `dist/` directory.
+- [x] `.github/workflows/build-windows.yml` exists and builds the Windows artifact using `make build-windows`.
+- [x] The GitHub Actions workflow runs `go test ./...` before building the artifact.
+- [x] `.github/workflows/release-windows.yml` exists and triggers on `v*.*.*` tags.
+- [x] The release workflow creates a GitHub Release and attaches `dist/lol-cli.exe`.
