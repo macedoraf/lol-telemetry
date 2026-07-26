@@ -25,11 +25,14 @@ type Daemon struct {
 	orch         *orchestrator.Orchestrator
 	pollInterval time.Duration
 	lastEvents   int
+	connected    bool
+	lastErr      string
 }
 
 // DaemonConfig holds the runtime configuration for the daemon.
 type DaemonConfig struct {
 	Port            string
+	BaseURL         string
 	PollInterval    time.Duration
 	JudgeEnabled    bool
 	OpenRouterKey   string
@@ -38,7 +41,7 @@ type DaemonConfig struct {
 
 // NewDaemon creates a new daemon instance.
 func NewDaemon(cfg DaemonConfig) *Daemon {
-	client := riotclient.NewClient()
+	client := riotclient.NewClientWithURL(cfg.BaseURL)
 	hub := NewHub()
 
 	var j *judge.Judge
@@ -126,8 +129,19 @@ func (d *Daemon) pollLoop(ctx context.Context) {
 func (d *Daemon) tick(ctx context.Context) {
 	data, err := d.client.GetGameData()
 	if err != nil {
+		if d.connected || d.lastErr != err.Error() {
+			log.Printf("LoL API connection failed: %v", err)
+			d.lastErr = err.Error()
+		}
+		d.connected = false
 		d.hub.BroadcastStatus("lcu_error", err.Error())
 		return
+	}
+
+	if !d.connected {
+		log.Printf("LoL API connected: gameTime=%.1f mode=%s", data.GameData.GameTime, data.GameData.GameMode)
+		d.connected = true
+		d.lastErr = ""
 	}
 
 	name, err := d.client.GetActivePlayerName()
@@ -177,6 +191,19 @@ func (d *Daemon) broadcastEvents(data riotclient.AllGameData) {
 		}
 	}
 	d.lastEvents = len(data.Events.Events)
+}
+
+// CheckConnection attempts a single request to the LoL Live Client Data API and
+// reports whether it is reachable and in-game.
+func (d *Daemon) CheckConnection() error {
+	data, err := d.client.GetGameData()
+	if err != nil {
+		return err
+	}
+	if data.GameData.GameTime <= 0 {
+		return fmt.Errorf("LoL API reachable but no active game detected (gameTime=%.1f)", data.GameData.GameTime)
+	}
+	return nil
 }
 
 // Config returns the current daemon configuration.

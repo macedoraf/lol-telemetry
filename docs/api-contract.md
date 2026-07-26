@@ -114,7 +114,20 @@ To enable offline development, unit testing, and TDD without requiring an active
 *   **Mock File Path:** `testdata/mocks/allgamedata.json`
 *   **Rule for AI/Developers:** Any DTO (Data Transfer Object) in `pkg/riotclient` MUST map strictly to the structure present in `testdata/mocks/allgamedata.json`. Do not infer fields outside of this contract.
 
-## 5. Troubleshooting & Logs
+## 5. Configuration
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `LOL_DAEMON_PORT` | `8080` | WebSocket server port |
+| `LOL_POLL_INTERVAL` | `1s` | Live Client Data API polling interval |
+| `LOL_BASE_URL` | `https://127.0.0.1:2999/liveclientdata` | LoL API base URL |
+| `OPENROUTER_API_KEY` | — | API key for Judge |
+| `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Judge model |
+| `JUDGE_ENABLED` | `true` if key is set | Toggle Judge |
+| `LOL_CLI_LOG` | — | Override CLI log path |
+| `LOL_DAEMON_LOG` | — | Override daemon log path |
+
+## 6. Troubleshooting & Logs
 
 Both `lol-cli` and `lol-daemon` write startup logs to a file:
 
@@ -123,12 +136,33 @@ Both `lol-cli` and `lol-daemon` write startup logs to a file:
 | `lol-cli` | `<exe-dir>\lol-cli.log` (falls back to temp) | `/tmp/lol-cli.log` | `LOL_CLI_LOG` |
 | `lol-daemon` | `<exe-dir>\lol-daemon.log` (falls back to temp) | `/tmp/lol-daemon.log` | `LOL_DAEMON_LOG` |
 
-If the TUI opens and closes immediately on Windows, check the log file for the exact error. Common causes:
+### Test the LoL connection
+
+```bash
+# Test the default LoL API endpoint
+lol-daemon -check
+
+# Test a custom endpoint
+lol-daemon -check -lol-url https://localhost:2999/liveclientdata
+```
+
+The daemon will print `LoL API connection OK` if the API is reachable and a game is active, or the exact error otherwise.
+
+### If the TUI opens and closes immediately on Windows
+
+Check the log file for the exact error. Common causes:
 
 - The daemon is not running on `ws://localhost:8080/ws`.
 - The terminal does not support the alternate screen buffer; try `lol-cli --no-alt`.
 - The TUI is being launched without a real TTY; in that case `lol-cli` automatically falls back to `--raw` mode.
 
+### If the connection with LoL stopped working
+
+- Make sure a League of Legends match is in progress. The Live Client Data API is only active during games.
+- Run `lol-daemon -check` to see the exact error.
+- Check `lol-daemon.log` for repeated `LoL API connection failed` messages.
+- Try changing the base URL with `LOL_BASE_URL` or `-lol-url` if your client binds to a different address.
+
 ---
 
-*Gerado por OpenCode Agent | Tokens estimados: ~1.400 | Ciclos: 2*
+*Gerado por OpenCode Agent | Tokens estimados: ~1.600 | Ciclos: 3*
