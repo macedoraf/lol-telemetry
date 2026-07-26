@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"time"
 )
@@ -18,6 +20,7 @@ const defaultBaseURL = "https://127.0.0.1:2999/liveclientdata"
 type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
+	Debug      bool // Log every request/response when true.
 }
 
 // NewClient returns a client configured with SSL verification disabled,
@@ -46,18 +49,63 @@ func NewClientWithURL(baseURL string) *Client {
 // response into dest. It returns an error for non-2xx status codes or
 // malformed JSON.
 func (c *Client) getJSON(path string, dest any) error {
-	resp, err := c.HTTPClient.Get(c.BaseURL + path)
+	url := c.BaseURL + path
+	if c.Debug {
+		log.Printf("[riotclient] GET %s", url)
+	}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	if c.Debug {
+		if dump, err := httputil.DumpRequestOut(req, false); err == nil {
+			log.Printf("[riotclient] request dump: %s", string(dump))
+		}
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		if c.Debug {
+			log.Printf("[riotclient] GET %s failed: %v", url, err)
+		}
 		return fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
+	if c.Debug {
+		if dump, err := httputil.DumpResponse(resp, false); err == nil {
+			log.Printf("[riotclient] response dump: %s", string(dump))
+		}
+	}
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
+		if c.Debug {
+			log.Printf("[riotclient] GET %s status=%d body=%s", url, resp.StatusCode, string(body))
+		}
 		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, body)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(dest); err != nil {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		if c.Debug {
+			log.Printf("[riotclient] GET %s read body failed: %v", url, err)
+		}
+		return fmt.Errorf("read body failed: %w", err)
+	}
+	if c.Debug && len(body) > 0 {
+		const maxBody = 2000
+		shown := len(body)
+		if shown > maxBody {
+			shown = maxBody
+		}
+		log.Printf("[riotclient] GET %s body (truncated): %s", url, string(body[:shown]))
+	}
+
+	if err := json.Unmarshal(body, dest); err != nil {
+		if c.Debug {
+			log.Printf("[riotclient] GET %s decode failed: %v", url, err)
+		}
 		return fmt.Errorf("decode failed: %w", err)
 	}
 	return nil
