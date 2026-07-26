@@ -222,3 +222,48 @@ func (c *Client) GetGameStats() (GameData, error) {
 	}
 	return data, nil
 }
+
+// CheckConnection attempts a single /allgamedata request and returns a detailed
+// error suitable for troubleshooting. It is safe to call when the game might not
+// be running.
+func (c *Client) CheckConnection() error {
+	_, err := c.GetGameData()
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("%w (is League of Legends running and are you in an active game?)", err)
+}
+
+// DiscoverBaseURL tries to reach the LoL Live Client Data API on common
+// addresses and returns the first working base URL. If none work, it returns
+// an error aggregating all attempts.
+func DiscoverBaseURL(timeout time.Duration, debug bool) (string, error) {
+	candidates := []string{
+		"https://127.0.0.1:2999/liveclientdata",
+		"https://localhost:2999/liveclientdata",
+	}
+	if debug {
+		log.Printf("[riotclient] discovering Live Client Data API...")
+	}
+	var lastErr error
+	for _, url := range candidates {
+		client := NewClientWithURL(url)
+		client.HTTPClient.Timeout = timeout
+		client.Debug = debug
+		if debug {
+			log.Printf("[riotclient] trying %s", url)
+		}
+		_, err := client.GetGameData()
+		if err == nil {
+			if debug {
+				log.Printf("[riotclient] discovered working URL: %s", url)
+			}
+			return url, nil
+		}
+		lastErr = err
+		if debug {
+			log.Printf("[riotclient] %s failed: %v", url, err)
+		}
+	}
+	return "", fmt.Errorf("could not discover LoL Live Client Data API on common addresses: %w", lastErr)
+}
