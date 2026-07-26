@@ -1,5 +1,5 @@
-// Package main is the CLI entrypoint. It wires the riotclient and the debugger
-// renderer together with zero business logic.
+// Package main is the CLI entrypoint. It wires the riotclient, the feature menu,
+// the SDK route debugger, and the Judge tips panel together with zero business logic.
 package main
 
 import (
@@ -12,13 +12,16 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"lol-telemetry/internal/config"
 	"lol-telemetry/internal/hooks"
 	"lol-telemetry/internal/judge"
 	"lol-telemetry/internal/judge/openrouter"
 	"lol-telemetry/internal/judge/payload"
+	"lol-telemetry/internal/menu"
 	"lol-telemetry/internal/orchestrator"
 	"lol-telemetry/internal/processor"
 	"lol-telemetry/internal/renderer"
+	"lol-telemetry/internal/tips"
 	"lol-telemetry/pkg/riotclient"
 )
 
@@ -46,10 +49,11 @@ func main() {
 		return
 	}
 
-	model := renderer.NewDebugger(client)
-	program := tea.NewProgram(model, tea.WithAltScreen())
+	cfg := config.LoadEnvConfig()
+	app := newAppModel(client, cfg)
+	program := tea.NewProgram(app, tea.WithAltScreen())
 
-	startJudgeLoop(program, client)
+	startJudgeLoop(program, client, cfg)
 
 	if _, err := program.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
@@ -57,12 +61,97 @@ func main() {
 	}
 }
 
-func startJudgeLoop(program *tea.Program, client *riotclient.Client) {
-	llmClient := newLLMClient()
-	if llmClient == nil {
+// appModel is the top-level Bubble Tea model that routes between the feature
+// menu, the SDK route debugger, and the Judge tips panel.
+type appModel struct {
+	activeView string // "menu", "routes", "tips"
+	menu       menu.Model
+	debugger   renderer.Model
+	tips       tips.Model
+}
+
+func newAppModel(client *riotclient.Client, cfg config.EnvConfig) appModel {
+	return appModel{
+		activeView: "menu",
+		menu:       menu.NewModel(),
+		debugger:   renderer.NewDebugger(client),
+		tips:       tips.NewModel(cfg),
+	}
+}
+
+func (m appModel) Init() tea.Cmd {
+	return m.menu.Init()
+}
+
+func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		menuModel, _ := m.menu.Update(msg)
+		debuggerModel, _ := m.debugger.Update(msg)
+		tipsModel, _ := m.tips.Update(msg)
+		m.menu = menuModel.(menu.Model)
+		m.debugger = debuggerModel.(renderer.Model)
+		m.tips = tipsModel.(tips.Model)
+		return m, nil
+
+	case menu.SelectMsg:
+		switch msg.Choice {
+		case menu.ChoiceRoutes:
+			m.activeView = "routes"
+		case menu.ChoiceTips:
+			m.activeView = "tips"
+		}
+		return m, nil
+
+	case tips.BackMsg:
+		m.activeView = "menu"
+		return m, nil
+
+	case renderer.AdviceMsg:
+		debuggerModel, _ := m.debugger.Update(msg)
+		tipsModel, _ := m.tips.Update(tips.UpdateAdviceMsg{Advice: msg.Advice})
+		m.debugger = debuggerModel.(renderer.Model)
+		m.tips = tipsModel.(tips.Model)
+		return m, nil
+	}
+
+	switch m.activeView {
+	case "menu":
+		newMenu, cmd := m.menu.Update(msg)
+		m.menu = newMenu.(menu.Model)
+		cmds = append(cmds, cmd)
+	case "routes":
+		newDebugger, cmd := m.debugger.Update(msg)
+		m.debugger = newDebugger.(renderer.Model)
+		cmds = append(cmds, cmd)
+	case "tips":
+		newTips, cmd := m.tips.Update(msg)
+		m.tips = newTips.(tips.Model)
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m appModel) View() string {
+	switch m.activeView {
+	case "routes":
+		return m.debugger.View()
+	case "tips":
+		return m.tips.View()
+	default:
+		return m.menu.View()
+	}
+}
+
+func startJudgeLoop(program *tea.Program, client *riotclient.Client, cfg config.EnvConfig) {
+	if !cfg.Enabled() {
 		return
 	}
 
+	llmClient := openrouter.NewClientWithModel(cfg.APIKey, cfg.Model)
 	reg := hooks.NewRegistry()
 	reg.Register(hooks.Periodic5MinHook{})
 
@@ -87,14 +176,6 @@ func startJudgeLoop(program *tea.Program, client *riotclient.Client) {
 			}
 		}
 	}()
-}
-
-func newLLMClient() judge.LLMClient {
-	apiKey := os.Getenv("OPENROUTER_API_KEY")
-	if apiKey == "" {
-		return nil
-	}
-	return openrouter.NewClient(apiKey)
 }
 
 func runSmokeTest(client *riotclient.Client, mockPath string) error {

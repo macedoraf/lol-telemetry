@@ -59,6 +59,78 @@ func TestClient_Complete(t *testing.T) {
 	}
 }
 
+func TestClient_Complete_CustomModel(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var req map[string]any
+		if err := json.Unmarshal(body, &req); err != nil {
+			t.Fatalf("invalid request body: %v", err)
+		}
+		if req["model"] != "anthropic/claude-3.5-sonnet" {
+			t.Errorf("model = %v, want anthropic/claude-3.5-sonnet", req["model"])
+		}
+		resp := map[string]any{
+			"choices": []map[string]any{
+				{
+					"message": map[string]string{
+						"content": "Custom model response.",
+					},
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClientWithModel("test-key", "anthropic/claude-3.5-sonnet")
+	client.Endpoint = server.URL
+
+	got, err := client.Complete(context.Background(), "system prompt", "user prompt")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "Custom model response." {
+		t.Errorf("response = %s, want Custom model response.", got)
+	}
+}
+
+func TestClient_Complete_EmptyModelFallsBack(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var req map[string]any
+		if err := json.Unmarshal(body, &req); err != nil {
+			t.Fatalf("invalid request body: %v", err)
+		}
+		if req["model"] != DefaultModel {
+			t.Errorf("model = %v, want default %s", req["model"], DefaultModel)
+		}
+		resp := map[string]any{
+			"choices": []map[string]any{
+				{
+					"message": map[string]string{
+						"content": "Fallback model response.",
+					},
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewClientWithModel("test-key", "")
+	client.Endpoint = server.URL
+
+	got, err := client.Complete(context.Background(), "system", "user")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "Fallback model response." {
+		t.Errorf("response = %s, want Fallback model response.", got)
+	}
+}
+
 func TestClient_Complete_ServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
