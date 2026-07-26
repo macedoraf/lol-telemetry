@@ -58,6 +58,34 @@
       "nextStep": "QA_REVIEW",
       "retry_count": 0,
       "blockers": []
+    },
+    "002-cli-menu-judge-env": {
+      "name": "Interactive CLI Menu & BYOK Judge Config",
+      "status": "CLOSED",
+      "phase": "CLOSED",
+      "artifacts": [
+        "docs/features/002-cli-menu-judge-env-functional.md",
+        "docs/features/002-cli-menu-judge-env-technical.md",
+        "docs/features/002-cli-menu-judge-env-testing.md",
+        "docs/features/tracking.md",
+        ".opencode/state.json",
+        "cmd/lol-cli/main.go",
+        "cmd/lol-cli/main_test.go",
+        "internal/menu/model.go",
+        "internal/menu/model_test.go",
+        "internal/tips/model.go",
+        "internal/tips/model_test.go",
+        "internal/config/env.go",
+        "internal/config/env_test.go",
+        "internal/judge/openrouter/client.go",
+        "internal/judge/openrouter/client_test.go",
+        "README.md",
+        "CHANGELOG.md",
+        "AGENTS.md"
+      ],
+      "nextStep": "DONE",
+      "retry_count": 0,
+      "blockers": []
     }
   }
 }

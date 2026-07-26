@@ -13,6 +13,25 @@ Test the TUI dashboard instantly without an active game client:
 go run cmd/lol-cli/main.go --mock testdata/mocks/allgamedata.json
 ```
 
+The CLI starts with a **Feature Menu**. Select `[Rotas do SDK]` to inspect the Live Client Data API routes, or `[Dicas do Jogo]` to view Judge tips and configuration.
+
+### Judge Configuration (Bring Your Own Key)
+The optional LLM Judge is powered by [OpenRouter](https://openrouter.ai) and configured through environment variables:
+
+| Variable | Required | Description |
+| :--- | :--- | :--- |
+| `OPENROUTER_API_KEY` | Yes | Your OpenRouter API key. |
+| `OPENROUTER_MODEL` | No | Model to use. Defaults to `openai/gpt-4o-mini`. |
+
+Example:
+```bash
+export OPENROUTER_API_KEY="sk-..."
+export OPENROUTER_MODEL="anthropic/claude-3.5-sonnet"
+go run cmd/lol-cli/main.go
+```
+
+When the key is absent, the Judge loop is disabled and the `[Dicas do Jogo]` panel shows the configuration status.
+
 ## Examples & Use Cases
 
 ### Building a Game Overlay

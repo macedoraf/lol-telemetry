@@ -11,7 +11,8 @@
 | **feature07** | Interactive CLI Monitor and Debugger | `COMPLETED` | Bubble Tea TUI with route navigation, raw JSON viewport, connection status, and resilient polling. |
 | **feature08** | Interactive CLI Monitor and Debugger | `DUPLICATED` | Duplicate of feature07; kept for historical reference only. |
 | **001-periodic-judge-hook** | Periodic Judge Hook | `READY_FOR_QA` | Trigger a Judge (LLM) hook at every 5-minute game mark, build a payload from Live Client Data API, and render short tactical advice in the TUI. |
+| **002-cli-menu-judge-env** | Interactive CLI Menu & BYOK Judge Config | `QA_PASSED` | BYOK Judge configuration via environment variables and an interactive CLI menu to access SDK routes or game tips. |
 
 ---
 
-*Gerado por OpenCode Agent | Tokens estimados: ~600 | Ciclos: 2*
+*Gerado por OpenCode Agent | Tokens estimados: ~800 | Ciclos: 3*

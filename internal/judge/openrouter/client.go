@@ -14,6 +14,9 @@ import (
 // DefaultEndpoint is the OpenRouter chat completions endpoint.
 const DefaultEndpoint = "https://openrouter.ai/api/v1/chat/completions"
 
+// DefaultModel is the model used when none is provided.
+const DefaultModel = "openai/gpt-4o-mini"
+
 // Client is a thin LLM client using the OpenRouter / OpenAI format.
 type Client struct {
 	APIKey   string
@@ -22,12 +25,20 @@ type Client struct {
 	HTTP     *http.Client
 }
 
-// NewClient creates an OpenRouter client with the given API key.
+// NewClient creates an OpenRouter client with the given API key and the default model.
 func NewClient(apiKey string) *Client {
+	return NewClientWithModel(apiKey, DefaultModel)
+}
+
+// NewClientWithModel creates an OpenRouter client with the given API key and model.
+func NewClientWithModel(apiKey, model string) *Client {
+	if model == "" {
+		model = DefaultModel
+	}
 	return &Client{
 		APIKey:   apiKey,
 		Endpoint: DefaultEndpoint,
-		Model:    "openai/gpt-4o-mini",
+		Model:    model,
 		HTTP: &http.Client{
 			Timeout: 15 * time.Second,
 		},

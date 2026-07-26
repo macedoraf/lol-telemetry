@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`002-cli-menu-judge-env`**: Interactive CLI menu and BYOK Judge configuration.
+  - `OPENROUTER_MODEL` environment variable to configure the LLM model used by the Judge (defaults to `openai/gpt-4o-mini`).
+  - Feature menu (`internal/menu`) on startup with `[Rotas do SDK]` and `[Dicas do Jogo]` options.
+  - Tips panel (`internal/tips`) that displays the latest Judge advice and current environment configuration (API key is masked in the UI).
+  - Top-level `appModel` in `cmd/lol-cli/main.go` that routes between menu, debugger, and tips while forwarding Judge advice to all views.
+
 ## [0.3.0] - 2026-07-25
 
 ### Added
@@ -36,4 +44,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-*Gerado por Tech Writer | Tokens estimados: ~800 | Ciclos: 1*
+*Gerado por Tech Writer | Tokens estimados: ~1.200 | Ciclos: 2*
