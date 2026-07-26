@@ -11,10 +11,16 @@ import (
 //   - port: 8080
 //   - poll interval: 1s
 //   - judge: enabled if OPENROUTER_API_KEY is set
+//   - LoL base URL: https://127.0.0.1:2999/liveclientdata
 func LoadDaemonConfigFromEnv() DaemonConfig {
 	port := os.Getenv("LOL_DAEMON_PORT")
 	if port == "" {
 		port = "8080"
+	}
+
+	baseURL := os.Getenv("LOL_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://127.0.0.1:2999/liveclientdata"
 	}
 
 	interval := 1 * time.Second
@@ -37,6 +43,7 @@ func LoadDaemonConfigFromEnv() DaemonConfig {
 
 	return DaemonConfig{
 		Port:            port,
+		BaseURL:         baseURL,
 		PollInterval:    interval,
 		JudgeEnabled:    judgeEnabled,
 		OpenRouterKey:   apiKey,

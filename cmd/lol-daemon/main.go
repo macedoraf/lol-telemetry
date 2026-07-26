@@ -27,13 +27,24 @@ func main() {
 
 	cfg := service.LoadDaemonConfigFromEnv()
 
+	var check bool
 	flag.StringVar(&cfg.Port, "port", cfg.Port, "WebSocket server port")
 	flag.DurationVar(&cfg.PollInterval, "poll-interval", cfg.PollInterval, "Live Client Data API polling interval")
+	flag.StringVar(&cfg.BaseURL, "lol-url", cfg.BaseURL, "LoL Live Client Data API base URL")
+	flag.BoolVar(&check, "check", false, "test the LoL API connection once and exit")
 	flag.Parse()
 
-	log.Printf("config: port=%s poll=%s judge=%v", cfg.Port, cfg.PollInterval, cfg.JudgeEnabled)
+	log.Printf("config: port=%s lolUrl=%s poll=%s judge=%v", cfg.Port, cfg.BaseURL, cfg.PollInterval, cfg.JudgeEnabled)
 
 	d := service.NewDaemon(cfg)
+
+	if check {
+		if err := d.CheckConnection(); err != nil {
+			fatal("LoL API connection failed: %v", err)
+		}
+		fmt.Println("LoL API connection OK")
+		return
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

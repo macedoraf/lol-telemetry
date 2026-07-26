@@ -23,11 +23,18 @@ type Client struct {
 // NewClient returns a client configured with SSL verification disabled,
 // matching the self-signed certificate served by the local LoL client.
 func NewClient() *Client {
+	return NewClientWithURL(defaultBaseURL)
+}
+
+// NewClientWithURL returns a client configured with SSL verification disabled
+// and a custom base URL. This is useful for tests, mocks, or when the LoL
+// client is reachable on a different address.
+func NewClientWithURL(baseURL string) *Client {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	return &Client{
-		BaseURL: defaultBaseURL,
+		BaseURL: baseURL,
 		HTTPClient: &http.Client{
 			Transport: transport,
 			Timeout:   5 * time.Second,
