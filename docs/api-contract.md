@@ -114,6 +114,21 @@ To enable offline development, unit testing, and TDD without requiring an active
 *   **Mock File Path:** `testdata/mocks/allgamedata.json`
 *   **Rule for AI/Developers:** Any DTO (Data Transfer Object) in `pkg/riotclient` MUST map strictly to the structure present in `testdata/mocks/allgamedata.json`. Do not infer fields outside of this contract.
 
+## 5. Troubleshooting & Logs
+
+Both `lol-cli` and `lol-daemon` write startup logs to a file:
+
+| Binary | Default log path (Windows) | Default log path (macOS/Linux) | Override |
+|--------|---------------------------|-------------------------------|----------|
+| `lol-cli` | `<exe-dir>\lol-cli.log` (falls back to temp) | `/tmp/lol-cli.log` | `LOL_CLI_LOG` |
+| `lol-daemon` | `<exe-dir>\lol-daemon.log` (falls back to temp) | `/tmp/lol-daemon.log` | `LOL_DAEMON_LOG` |
+
+If the TUI opens and closes immediately on Windows, check the log file for the exact error. Common causes:
+
+- The daemon is not running on `ws://localhost:8080/ws`.
+- The terminal does not support the alternate screen buffer; try `lol-cli --no-alt`.
+- The TUI is being launched without a real TTY; in that case `lol-cli` automatically falls back to `--raw` mode.
+
 ---
 
-*Gerado por OpenCode Agent | Tokens estimados: ~1.200 | Ciclos: 1*
+*Gerado por OpenCode Agent | Tokens estimados: ~1.400 | Ciclos: 2*
