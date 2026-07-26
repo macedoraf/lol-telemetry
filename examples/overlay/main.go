@@ -1,74 +1,114 @@
-// Command overlay demonstrates how to poll the Live Client Data API to build a
-// simple game overlay. It is a self-contained example referenced from the
-// README; it is not intended to be run during a real League of Legends match
-// unless the LoL client is running and serving the local API on port 2999.
+// Command overlay demonstrates how to integrate an external tool with the
+// lol-telemetry daemon over WebSocket. The daemon polls the LoL Live Client
+// Data API and pushes game state, events, and judge advice to the overlay.
+//
+// Before running this example, start the daemon:
+//
+//	go run ./cmd/lol-daemon
+//
+// Then run this example:
+//
+//	go run ./examples/overlay
 package main
 
 import (
 	"context"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"lol-telemetry/pkg/riotclient"
+	"github.com/gorilla/websocket"
+
+	"lol-telemetry/pkg/service"
 )
 
 func main() {
-	// The SDK client is preconfigured with InsecureSkipVerify so it can talk
-	// to the self-signed certificate served by the LoL client on 127.0.0.1:2999.
-	client := riotclient.NewClient()
+	var addr string
+	flag.StringVar(&addr, "addr", "ws://localhost:8080/ws", "lol-telemetry daemon WebSocket address")
+	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Fetch the active player name once at startup.
-	name, err := client.GetActivePlayerName()
+	conn, _, err := websocket.DefaultDialer.DialContext(ctx, addr, nil)
 	if err != nil {
-		log.Printf("Unable to fetch active player name (is a game running?): %v", err)
-	} else {
-		fmt.Printf("Active player: %s\n", name)
+		log.Fatalf("dial %s: %v", addr, err)
 	}
+	defer conn.Close()
 
-	// Poll the local server at a conservative rate. Riot recommends keeping
-	// Live Client Data API traffic low to avoid impacting the LoL client.
-	// 1 request per second is a reasonable maximum for a lightweight overlay.
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+	fmt.Printf("Connected to %s\n", addr)
 
 	for {
 		select {
 		case <-ctx.Done():
 			fmt.Println("Shutting down overlay...")
+			conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			return
-		case <-ticker.C:
-			fetchOverlayData(client)
+		default:
 		}
+
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				fmt.Println("Connection closed by server")
+				return
+			}
+			log.Printf("read error: %v", err)
+			return
+		}
+
+		handleMessage(msg)
 	}
 }
 
-func fetchOverlayData(client *riotclient.Client) {
-	// Game stats: game mode, current game time, map information.
-	stats, err := client.GetGameStats()
-	if err != nil {
-		log.Printf("game stats error: %v", err)
+func handleMessage(msg []byte) {
+	var envelope service.WSMessage
+	if err := json.Unmarshal(msg, &envelope); err != nil {
+		log.Printf("unmarshal: %v", err)
 		return
 	}
-	fmt.Printf("[%s] Game time: %.2f\n", stats.GameMode, stats.GameTime)
 
-	// Event data: recent in-game events such as GameStart, ChampionKill, etc.
-	events, err := client.GetEventData()
-	if err != nil {
-		log.Printf("event data error: %v", err)
-		return
-	}
-	if len(events.Events) > 0 {
-		last := events.Events[len(events.Events)-1]
-		fmt.Printf("Last event: %s (t=%.2f)\n", last.EventName, last.EventTime)
-	}
+	switch envelope.Type {
+	case service.MsgTypeHello:
+		fmt.Println("[hello] daemon ready")
 
-	// In a real overlay, the data above would be pushed to a UI layer (Wails,
-	// Electron, a web socket, etc.) instead of being printed to stdout.
+	case service.MsgTypeGameState:
+		var gs service.GameState
+		if err := json.Unmarshal(envelope.Payload, &gs); err != nil {
+			log.Printf("game state unmarshal: %v", err)
+			return
+		}
+		fmt.Printf("[%s] gameTime=%.1f players=%d\n", gs.GameMode, gs.GameTime, len(gs.Players))
+
+	case service.MsgTypeJudgeAdvice:
+		var advice service.JudgeAdvice
+		if err := json.Unmarshal(envelope.Payload, &advice); err != nil {
+			log.Printf("advice unmarshal: %v", err)
+			return
+		}
+		fmt.Printf("[judge %s@min%d] %s\n", advice.HookName, advice.GameMinute, advice.Advice)
+
+	case service.MsgTypeEvent:
+		var event service.EventMessage
+		if err := json.Unmarshal(envelope.Payload, &event); err != nil {
+			log.Printf("event unmarshal: %v", err)
+			return
+		}
+		fmt.Printf("[event] %s at %.1f\n", event.EventName, event.EventTime)
+
+	case service.MsgTypeError:
+		var errMsg service.ErrorMessage
+		if err := json.Unmarshal(envelope.Payload, &errMsg); err != nil {
+			log.Printf("error unmarshal: %v", err)
+			return
+		}
+		fmt.Printf("[error] %s: %s\n", errMsg.Code, errMsg.Message)
+
+	default:
+		fmt.Printf("[unknown] type=%s\n", envelope.Type)
+	}
 }

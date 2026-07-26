@@ -14,7 +14,7 @@ type mockHook struct {
 	shouldFire bool
 }
 
-func (m mockHook) Name() string { return m.name }
+func (m mockHook) Name() string        { return m.name }
 func (m mockHook) Instruction() string { return "mock instruction for " + m.name }
 func (m mockHook) ShouldFire(ctx types.HookContext) (bool, error) {
 	return m.shouldFire, nil
@@ -69,7 +69,7 @@ func TestRegistry_EvaluateReturnsErrorOnHookError(t *testing.T) {
 
 type errorHook struct{}
 
-func (errorHook) Name() string       { return "error-hook" }
+func (errorHook) Name() string        { return "error-hook" }
 func (errorHook) Instruction() string { return "error" }
 func (errorHook) ShouldFire(ctx types.HookContext) (bool, error) {
 	return false, errors.New("hook evaluation failed")

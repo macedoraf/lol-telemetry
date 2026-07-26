@@ -10,6 +10,7 @@ import (
 )
 
 const maxAdviceLength = 140
+const maxReasoningLength = 300
 
 // LLMClient abstracts the LLM provider call.
 type LLMClient interface {
@@ -26,19 +27,30 @@ func NewJudge(client LLMClient) *Judge {
 	return &Judge{client: client}
 }
 
-// Evaluate sends the request to the LLM and returns a concise response.
+// Evaluate sends the request to the LLM and returns a concise response with reasoning.
 func (j *Judge) Evaluate(ctx context.Context, req types.JudgeRequest) (types.JudgeResponse, error) {
 	prompt, err := buildPrompt(req)
 	if err != nil {
 		return types.JudgeResponse{}, fmt.Errorf("build prompt: %w", err)
 	}
 
-	advice, err := j.client.Complete(ctx, req.SystemPrompt, prompt)
+	raw, err := j.client.Complete(ctx, req.SystemPrompt, prompt)
 	if err != nil {
 		return types.JudgeResponse{}, fmt.Errorf("llm completion: %w", err)
 	}
 
-	return types.JudgeResponse{Advice: truncate(advice, maxAdviceLength)}, nil
+	var parsed struct {
+		Advice    string `json:"advice"`
+		Reasoning string `json:"reasoning"`
+	}
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+		return types.JudgeResponse{}, fmt.Errorf("parse llm response: %w", err)
+	}
+
+	return types.JudgeResponse{
+		Advice:    truncate(parsed.Advice, maxAdviceLength),
+		Reasoning: truncate(parsed.Reasoning, maxReasoningLength),
+	}, nil
 }
 
 func buildPrompt(req types.JudgeRequest) (string, error) {

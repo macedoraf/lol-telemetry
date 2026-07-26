@@ -24,6 +24,7 @@ type DashboardState struct {
 // HookContext carries the raw game state and deduplication metadata for hooks.
 type HookContext struct {
 	Data      riotclient.AllGameData
+	PrevData  riotclient.AllGameData
 	GameTime  float64
 	PrevFired map[string]int64
 }
@@ -42,18 +43,22 @@ type LaneMatchup struct {
 
 // PlayerSnapshot is a compact view of a player for the Judge.
 type PlayerSnapshot struct {
-	SummonerName string
-	ChampionName string
-	Level        int
-	Position     string
-	Team         string
-	Kills        int
-	Deaths       int
-	Assists      int
-	CreepScore   int
-	CurrentGold  float64
-	Items        []ItemSnapshot
-	IsDead       bool
+	SummonerName   string
+	ChampionName   string
+	Level          int
+	Position       string
+	Team           string
+	Kills          int
+	Deaths         int
+	Assists        int
+	CreepScore     int
+	CurrentGold    float64
+	Items          []ItemSnapshot
+	IsDead         bool
+	SummonerSpells []SpellSnapshot
+	Runes          RuneSnapshot
+	Abilities      []AbilitySnapshot
+	Stats          StatsSnapshot
 }
 
 // ItemSnapshot is a compact item representation for the Judge.
@@ -61,6 +66,38 @@ type ItemSnapshot struct {
 	DisplayName string
 	ItemID      int
 	Slot        int
+}
+
+// SpellSnapshot is a compact summoner spell representation for the Judge.
+type SpellSnapshot struct {
+	Name string
+}
+
+// RuneSnapshot is a compact rune representation for the Judge.
+type RuneSnapshot struct {
+	Keystone      string
+	PrimaryTree   string
+	SecondaryTree string
+}
+
+// AbilitySnapshot is a compact ability representation for the Judge.
+type AbilitySnapshot struct {
+	Name  string
+	Level int
+}
+
+// StatsSnapshot is a compact stats representation for the Judge.
+type StatsSnapshot struct {
+	AttackDamage      float64
+	AbilityPower      float64
+	Armor             float64
+	MagicResist       float64
+	AttackSpeed       float64
+	CritChance        float64
+	HealthMax         float64
+	HealthCurrent     float64
+	MoveSpeed         float64
+	CooldownReduction float64
 }
 
 // GoldSnapshot holds gold information for the player and opponent.
@@ -102,6 +139,12 @@ type TeamObjectives struct {
 	Chaos ObjectiveState
 }
 
+// EventSnapshot is a compact game event for the Judge.
+type EventSnapshot struct {
+	Name string
+	Time float64
+}
+
 // GameSnapshot captures the overall match state.
 type GameSnapshot struct {
 	GameMode   string
@@ -111,6 +154,7 @@ type GameSnapshot struct {
 	AliveOrder int
 	AliveChaos int
 	Objectives TeamObjectives
+	Events     []EventSnapshot
 }
 
 // JudgeRequest is the payload delivered to the Judge for evaluation.
@@ -124,9 +168,11 @@ type JudgeRequest struct {
 	GameState    GameSnapshot
 	Question     string
 	SystemPrompt string
+	Events       []EventSnapshot
 }
 
-// JudgeResponse carries the Judge's actionable advice.
+// JudgeResponse carries the Judge's actionable advice and reasoning.
 type JudgeResponse struct {
-	Advice string
+	Advice    string
+	Reasoning string
 }
