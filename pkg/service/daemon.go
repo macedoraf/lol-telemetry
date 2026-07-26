@@ -37,11 +37,13 @@ type DaemonConfig struct {
 	JudgeEnabled    bool
 	OpenRouterKey   string
 	OpenRouterModel string
+	Debug           bool
 }
 
 // NewDaemon creates a new daemon instance.
 func NewDaemon(cfg DaemonConfig) *Daemon {
 	client := riotclient.NewClientWithURL(cfg.BaseURL)
+	client.Debug = cfg.Debug
 	hub := NewHub()
 
 	var j *judge.Judge

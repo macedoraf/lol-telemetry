@@ -32,9 +32,10 @@ func main() {
 	flag.DurationVar(&cfg.PollInterval, "poll-interval", cfg.PollInterval, "Live Client Data API polling interval")
 	flag.StringVar(&cfg.BaseURL, "lol-url", cfg.BaseURL, "LoL Live Client Data API base URL")
 	flag.BoolVar(&check, "check", false, "test the LoL API connection once and exit")
+	flag.BoolVar(&cfg.Debug, "debug", cfg.Debug, "enable verbose HTTP logging for the LoL API")
 	flag.Parse()
 
-	log.Printf("config: port=%s lolUrl=%s poll=%s judge=%v", cfg.Port, cfg.BaseURL, cfg.PollInterval, cfg.JudgeEnabled)
+	log.Printf("config: port=%s lolUrl=%s poll=%s judge=%v debug=%v", cfg.Port, cfg.BaseURL, cfg.PollInterval, cfg.JudgeEnabled, cfg.Debug)
 
 	d := service.NewDaemon(cfg)
 

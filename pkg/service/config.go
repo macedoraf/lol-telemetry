@@ -41,6 +41,8 @@ func LoadDaemonConfigFromEnv() DaemonConfig {
 		judgeEnabled = false
 	}
 
+	debug := os.Getenv("LOL_DEBUG") == "true" || os.Getenv("LOL_DEBUG") == "1"
+
 	return DaemonConfig{
 		Port:            port,
 		BaseURL:         baseURL,
@@ -48,5 +50,6 @@ func LoadDaemonConfigFromEnv() DaemonConfig {
 		JudgeEnabled:    judgeEnabled,
 		OpenRouterKey:   apiKey,
 		OpenRouterModel: model,
+		Debug:           debug,
 	}
 }
