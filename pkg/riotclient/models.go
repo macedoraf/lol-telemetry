@@ -20,34 +20,34 @@ type Abilities struct {
 
 // ChampionStats holds the active player's current combat statistics.
 type ChampionStats struct {
-	AbilityPower                  float64 `json:"abilityPower"`
-	Armor                         float64 `json:"armor"`
-	ArmorPenetrationFlat          float64 `json:"armorPenetrationFlat"`
-	ArmorPenetrationPercent       float64 `json:"armorPenetrationPercent"`
-	AttackDamage                  float64 `json:"attackDamage"`
-	AttackRange                   float64 `json:"attackRange"`
-	AttackSpeed                   float64 `json:"attackSpeed"`
-	BonusArmorPenetrationPercent  float64 `json:"bonusArmorPenetrationPercent"`
-	BonusMagicPenetrationPercent  float64 `json:"bonusMagicPenetrationPercent"`
-	CooldownReduction             float64 `json:"cooldownReduction"`
-	CritChance                    float64 `json:"critChance"`
-	CritDamage                    float64 `json:"critDamage"`
-	CurrentHealth                 float64 `json:"currentHealth"`
-	HealthRegenRate               float64 `json:"healthRegenRate"`
-	LifeSteal                     float64 `json:"lifeSteal"`
-	MagicLethality                float64 `json:"magicLethality"`
-	MagicPenetrationFlat          float64 `json:"magicPenetrationFlat"`
-	MagicPenetrationPercent       float64 `json:"magicPenetrationPercent"`
-	MagicResist                   float64 `json:"magicResist"`
-	MaxHealth                     float64 `json:"maxHealth"`
-	MoveSpeed                     float64 `json:"moveSpeed"`
-	PhysicalLethality             float64 `json:"physicalLethality"`
-	ResourceMax                   float64 `json:"resourceMax"`
-	ResourceRegenRate             float64 `json:"resourceRegenRate"`
-	ResourceType                  string  `json:"resourceType"`
-	ResourceValue                 float64 `json:"resourceValue"`
-	SpellVamp                     float64 `json:"spellVamp"`
-	Tenacity                      float64 `json:"tenacity"`
+	AbilityPower                 float64 `json:"abilityPower"`
+	Armor                        float64 `json:"armor"`
+	ArmorPenetrationFlat         float64 `json:"armorPenetrationFlat"`
+	ArmorPenetrationPercent      float64 `json:"armorPenetrationPercent"`
+	AttackDamage                 float64 `json:"attackDamage"`
+	AttackRange                  float64 `json:"attackRange"`
+	AttackSpeed                  float64 `json:"attackSpeed"`
+	BonusArmorPenetrationPercent float64 `json:"bonusArmorPenetrationPercent"`
+	BonusMagicPenetrationPercent float64 `json:"bonusMagicPenetrationPercent"`
+	CooldownReduction            float64 `json:"cooldownReduction"`
+	CritChance                   float64 `json:"critChance"`
+	CritDamage                   float64 `json:"critDamage"`
+	CurrentHealth                float64 `json:"currentHealth"`
+	HealthRegenRate              float64 `json:"healthRegenRate"`
+	LifeSteal                    float64 `json:"lifeSteal"`
+	MagicLethality               float64 `json:"magicLethality"`
+	MagicPenetrationFlat         float64 `json:"magicPenetrationFlat"`
+	MagicPenetrationPercent      float64 `json:"magicPenetrationPercent"`
+	MagicResist                  float64 `json:"magicResist"`
+	MaxHealth                    float64 `json:"maxHealth"`
+	MoveSpeed                    float64 `json:"moveSpeed"`
+	PhysicalLethality            float64 `json:"physicalLethality"`
+	ResourceMax                  float64 `json:"resourceMax"`
+	ResourceRegenRate            float64 `json:"resourceRegenRate"`
+	ResourceType                 string  `json:"resourceType"`
+	ResourceValue                float64 `json:"resourceValue"`
+	SpellVamp                    float64 `json:"spellVamp"`
+	Tenacity                     float64 `json:"tenacity"`
 }
 
 // Rune represents a single rune (keystone, general rune, etc.).
@@ -74,21 +74,21 @@ type StatRune struct {
 
 // FullRunes describes the active player's complete rune setup.
 type FullRunes struct {
-	GeneralRunes    []Rune   `json:"generalRunes"`
-	Keystone        Rune     `json:"keystone"`
-	PrimaryRuneTree RuneTree `json:"primaryRuneTree"`
-	SecondaryRuneTree RuneTree `json:"secondaryRuneTree"`
-	StatRunes       []StatRune `json:"statRunes"`
+	GeneralRunes      []Rune     `json:"generalRunes"`
+	Keystone          Rune       `json:"keystone"`
+	PrimaryRuneTree   RuneTree   `json:"primaryRuneTree"`
+	SecondaryRuneTree RuneTree   `json:"secondaryRuneTree"`
+	StatRunes         []StatRune `json:"statRunes"`
 }
 
 // ActivePlayer represents the local player from the activePlayer block.
 type ActivePlayer struct {
-	Abilities      Abilities     `json:"abilities"`
-	ChampionStats  ChampionStats `json:"championStats"`
-	CurrentGold    float64       `json:"currentGold"`
-	FullRunes      FullRunes     `json:"fullRunes"`
-	Level          int           `json:"level"`
-	SummonerName   string        `json:"summonerName"`
+	Abilities     Abilities     `json:"abilities"`
+	ChampionStats ChampionStats `json:"championStats"`
+	CurrentGold   float64       `json:"currentGold"`
+	FullRunes     FullRunes     `json:"fullRunes"`
+	Level         int           `json:"level"`
+	SummonerName  string        `json:"summonerName"`
 }
 
 // Item represents a single item in a player's inventory.
@@ -135,23 +135,23 @@ type SummonerSpells struct {
 
 // AllPlayer represents a player in the match (active or opponent).
 type AllPlayer struct {
-	ChampionName     string         `json:"championName"`
-	IsBot            bool           `json:"isBot"`
-	IsDead           bool           `json:"isDead"`
-	Items            []Item         `json:"items"`
-	Level            int            `json:"level"`
-	Position         string         `json:"position"`
-	RawChampionName  string         `json:"rawChampionName"`
-	RespawnTimer     float64        `json:"respawnTimer"`
-	Runes            PlayerRunes    `json:"runes"`
-	Scores           PlayerScores   `json:"scores"`
-	SkinID           int            `json:"skinID"`
-	SummonerName     string         `json:"summonerName"`
-	SummonerSpells   SummonerSpells `json:"summonerSpells"`
-	Team             string         `json:"team"`
-	RiotID           string         `json:"riotId"`
-	RiotIDGameName   string         `json:"riotIdGameName"`
-	RiotIDTagLine    string         `json:"riotIdTagLine"`
+	ChampionName    string         `json:"championName"`
+	IsBot           bool           `json:"isBot"`
+	IsDead          bool           `json:"isDead"`
+	Items           []Item         `json:"items"`
+	Level           int            `json:"level"`
+	Position        string         `json:"position"`
+	RawChampionName string         `json:"rawChampionName"`
+	RespawnTimer    float64        `json:"respawnTimer"`
+	Runes           PlayerRunes    `json:"runes"`
+	Scores          PlayerScores   `json:"scores"`
+	SkinID          int            `json:"skinID"`
+	SummonerName    string         `json:"summonerName"`
+	SummonerSpells  SummonerSpells `json:"summonerSpells"`
+	Team            string         `json:"team"`
+	RiotID          string         `json:"riotId"`
+	RiotIDGameName  string         `json:"riotIdGameName"`
+	RiotIDTagLine   string         `json:"riotIdTagLine"`
 }
 
 // Event is a single game event from the events block.
@@ -168,11 +168,11 @@ type Events struct {
 
 // GameData contains match metadata.
 type GameData struct {
-	GameMode  string  `json:"gameMode"`
-	GameTime  float64 `json:"gameTime"`
-	MapName   string  `json:"mapName"`
-	MapNumber int     `json:"mapNumber"`
-	MapTerrain string `json:"mapTerrain"`
+	GameMode   string  `json:"gameMode"`
+	GameTime   float64 `json:"gameTime"`
+	MapName    string  `json:"mapName"`
+	MapNumber  int     `json:"mapNumber"`
+	MapTerrain string  `json:"mapTerrain"`
 }
 
 // AllGameData is the root DTO returned by /allgamedata.

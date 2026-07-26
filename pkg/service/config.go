@@ -1,0 +1,45 @@
+// Package service provides the background daemon and WebSocket API for lol-telemetry.
+package service
+
+import (
+	"os"
+	"time"
+)
+
+// LoadDaemonConfigFromEnv reads daemon configuration from environment variables.
+// Defaults:
+//   - port: 8080
+//   - poll interval: 1s
+//   - judge: enabled if OPENROUTER_API_KEY is set
+func LoadDaemonConfigFromEnv() DaemonConfig {
+	port := os.Getenv("LOL_DAEMON_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	interval := 1 * time.Second
+	if v := os.Getenv("LOL_POLL_INTERVAL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			interval = d
+		}
+	}
+
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	model := os.Getenv("OPENROUTER_MODEL")
+	if model == "" {
+		model = "openai/gpt-4o-mini"
+	}
+
+	judgeEnabled := os.Getenv("JUDGE_ENABLED") != "false"
+	if apiKey == "" {
+		judgeEnabled = false
+	}
+
+	return DaemonConfig{
+		Port:            port,
+		PollInterval:    interval,
+		JudgeEnabled:    judgeEnabled,
+		OpenRouterKey:   apiKey,
+		OpenRouterModel: model,
+	}
+}

@@ -21,12 +21,21 @@ type Judge interface {
 	Evaluate(ctx context.Context, req types.JudgeRequest) (types.JudgeResponse, error)
 }
 
+// Result pairs the hook that fired with the Judge response.
+type Result struct {
+	HookName   string
+	GameMinute int
+	Advice     string
+	Reasoning  string
+}
+
 // Orchestrator runs the periodic evaluation loop.
 type Orchestrator struct {
 	provider  GameDataProvider
 	registry  *hooks.Registry
 	builder   *payload.Builder
 	judge     Judge
+	prevData  riotclient.AllGameData
 	prevFired map[string]int64
 	lastErr   error
 }
@@ -43,7 +52,7 @@ func NewOrchestrator(provider GameDataProvider, registry *hooks.Registry, builde
 }
 
 // Tick fetches game data, evaluates hooks, and invokes the Judge for each trigger.
-func (o *Orchestrator) Tick(ctx context.Context) ([]types.JudgeResponse, error) {
+func (o *Orchestrator) Tick(ctx context.Context) ([]Result, error) {
 	data, err := o.provider.GetGameData()
 	if err != nil {
 		o.reset()
@@ -67,16 +76,19 @@ func (o *Orchestrator) Tick(ctx context.Context) ([]types.JudgeResponse, error) 
 
 	ctxHook := types.HookContext{
 		Data:      data,
+		PrevData:  o.prevData,
 		GameTime:  gameTime,
 		PrevFired: o.prevFired,
 	}
 	triggers, err := o.registry.Evaluate(ctxHook)
+	// Keep the latest data for transition detection in the next tick.
+	o.prevData = data
 	if err != nil {
 		o.lastErr = err
 		return nil, fmt.Errorf("evaluate hooks: %w", err)
 	}
 
-	var responses []types.JudgeResponse
+	var results []Result
 	for _, trigger := range triggers {
 		req, err := o.builder.Build(data, trigger.Question)
 		if err != nil {
@@ -88,13 +100,18 @@ func (o *Orchestrator) Tick(ctx context.Context) ([]types.JudgeResponse, error) 
 			o.lastErr = err
 			continue
 		}
-		responses = append(responses, resp)
+		results = append(results, Result{
+			HookName:   trigger.HookName,
+			GameMinute: req.GameMinute,
+			Advice:     resp.Advice,
+			Reasoning:  resp.Reasoning,
+		})
 		mark := hooks.CurrentMark(gameTime)
 		o.prevFired[trigger.HookName] = mark
 	}
 
 	o.lastErr = nil
-	return responses, nil
+	return results, nil
 }
 
 // reset clears deduplication state between matches.
@@ -102,4 +119,5 @@ func (o *Orchestrator) reset() {
 	for k := range o.prevFired {
 		delete(o.prevFired, k)
 	}
+	o.prevData = riotclient.AllGameData{}
 }
