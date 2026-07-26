@@ -5,12 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/gorilla/websocket"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"lol-telemetry/pkg/service"
 )
+
+const dialTimeout = 5 * time.Second
 
 // WSClient connects to the daemon and translates WebSocket messages into tea.Msg.
 type WSClient struct {
@@ -26,6 +29,11 @@ func NewWSClient(addr string) *WSClient {
 // Connect dials the daemon and returns a command that reads messages.
 func (c *WSClient) Connect(ctx context.Context) tea.Cmd {
 	return func() tea.Msg {
+		if ctx == nil {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(context.Background(), dialTimeout)
+			defer cancel()
+		}
 		conn, _, err := websocket.DefaultDialer.DialContext(ctx, c.addr, nil)
 		if err != nil {
 			return DisconnectedMsg{Error: fmt.Errorf("dial %s: %w", c.addr, err)}

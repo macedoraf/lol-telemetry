@@ -7,6 +7,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,23 +16,22 @@ import (
 )
 
 func main() {
-	var cfg service.DaemonConfig
-	flag.StringVar(&cfg.Port, "port", "8080", "WebSocket server port")
+	defer logPanic()
+
+	cleanup, err := setupLogging()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "logging setup failed: %v\n", err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	cfg := service.LoadDaemonConfigFromEnv()
+
+	flag.StringVar(&cfg.Port, "port", cfg.Port, "WebSocket server port")
+	flag.DurationVar(&cfg.PollInterval, "poll-interval", cfg.PollInterval, "Live Client Data API polling interval")
 	flag.Parse()
 
-	envCfg := service.LoadDaemonConfigFromEnv()
-	if !flag.Parsed() {
-		cfg = envCfg
-	} else {
-		// Merge CLI flags with env defaults.
-		if cfg.Port == "" {
-			cfg.Port = envCfg.Port
-		}
-		cfg.PollInterval = envCfg.PollInterval
-		cfg.JudgeEnabled = envCfg.JudgeEnabled
-		cfg.OpenRouterKey = envCfg.OpenRouterKey
-		cfg.OpenRouterModel = envCfg.OpenRouterModel
-	}
+	log.Printf("config: port=%s poll=%s judge=%v", cfg.Port, cfg.PollInterval, cfg.JudgeEnabled)
 
 	d := service.NewDaemon(cfg)
 
@@ -42,8 +42,7 @@ func main() {
 	fmt.Printf("Judge enabled: %v\n", cfg.JudgeEnabled)
 
 	if err := d.Run(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "daemon error: %v\n", err)
-		os.Exit(1)
+		fatal("daemon error: %v", err)
 	}
 
 	fmt.Println("lol-telemetry daemon stopped")
