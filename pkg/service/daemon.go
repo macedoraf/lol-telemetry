@@ -140,8 +140,6 @@ func (d *Daemon) pollLoop(ctx context.Context) {
 	ticker := time.NewTicker(d.pollInterval)
 	defer ticker.Stop()
 
-	d.hub.BroadcastHello()
-
 	for {
 		select {
 		case <-ctx.Done():

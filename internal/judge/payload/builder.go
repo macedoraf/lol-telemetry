@@ -23,12 +23,12 @@ func (b *Builder) Build(data riotclient.AllGameData, question string) (types.Jud
 		return types.JudgeRequest{}, fmt.Errorf("invalid game time: %f", gameTime)
 	}
 
-	active, ok := findActivePlayer(data)
+	active, ok := riotclient.FindActivePlayer(data)
 	if !ok {
 		return types.JudgeRequest{}, fmt.Errorf("active player not found")
 	}
 
-	opponent := findOpponent(data, active.Position, active.Team)
+	opponent := riotclient.FindOpponent(data, active.Position, active.Team)
 	identified := opponent.SummonerName != ""
 
 	req := types.JudgeRequest{
@@ -75,28 +75,6 @@ func (b *Builder) Build(data riotclient.AllGameData, question string) (types.Jud
 	}
 
 	return req, nil
-}
-
-func findActivePlayer(data riotclient.AllGameData) (riotclient.AllPlayer, bool) {
-	name := data.ActivePlayer.SummonerName
-	for _, p := range data.AllPlayers {
-		if p.SummonerName == name {
-			return p, true
-		}
-	}
-	return riotclient.AllPlayer{}, false
-}
-
-func findOpponent(data riotclient.AllGameData, position, activeTeam string) riotclient.AllPlayer {
-	if position == "" {
-		return riotclient.AllPlayer{}
-	}
-	for _, p := range data.AllPlayers {
-		if p.Team != activeTeam && p.Position == position {
-			return p
-		}
-	}
-	return riotclient.AllPlayer{}
 }
 
 func snapshotFromPlayer(p riotclient.AllPlayer) types.PlayerSnapshot {

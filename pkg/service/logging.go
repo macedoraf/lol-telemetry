@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	"fmt"
@@ -9,11 +9,8 @@ import (
 	"runtime"
 )
 
-// setupLogging redirects the standard logger to a file. On Windows it writes to
-// the executable's directory so users can find it easily; elsewhere it defaults
-// to a temp file unless LOL_CLI_LOG is set.
-func setupLogging() (cleanup func(), err error) {
-	path := logPath()
+func SetupLogging(appName, envVar string) (cleanup func(), err error) {
+	path := logPath(appName, envVar)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("open log file %s: %w", path, err)
@@ -21,19 +18,19 @@ func setupLogging() (cleanup func(), err error) {
 
 	log.SetOutput(io.MultiWriter(f, os.Stderr))
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Printf("lol-cli started (log: %s)", path)
+	log.Printf("%s started (log: %s)", appName, path)
 
 	return func() {
-		log.Printf("lol-cli exiting")
+		log.Printf("%s exiting", appName)
 		f.Close()
 	}, nil
 }
 
-func logPath() string {
-	if env := os.Getenv("LOL_CLI_LOG"); env != "" {
+func logPath(appName, envVar string) string {
+	if env := os.Getenv(envVar); env != "" {
 		return env
 	}
-	name := "lol-cli.log"
+	name := appName + ".log"
 	if runtime.GOOS == "windows" {
 		exe, err := os.Executable()
 		if err == nil {
@@ -55,16 +52,14 @@ func isWritable(path string) bool {
 	return true
 }
 
-// logPanic recovers from a panic, logs it, and re-raises it.
-func logPanic() {
+func LogPanic() {
 	if r := recover(); r != nil {
 		log.Printf("PANIC: %v", r)
 		panic(r)
 	}
 }
 
-// fatal logs the error and exits.
-func fatal(format string, args ...any) {
+func Fatal(format string, args ...any) {
 	log.Printf("FATAL: "+format, args...)
 	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)

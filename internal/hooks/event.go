@@ -40,11 +40,11 @@ func (PlayerDeathHook) Instruction() string {
 }
 func (PlayerDeathHook) CurrentMark(float64) int64 { return 0 }
 func (PlayerDeathHook) ShouldFire(ctx types.HookContext) (bool, error) {
-	active, ok := findActivePlayer(ctx.Data)
+	active, ok := riotclient.FindActivePlayer(ctx.Data)
 	if !ok {
 		return false, fmt.Errorf("active player not found")
 	}
-	prevActive, _ := findActivePlayer(ctx.PrevData)
+	prevActive, _ := riotclient.FindActivePlayer(ctx.PrevData)
 	return active.IsDead && (!prevActive.IsDead || prevActive.SummonerName == ""), nil
 }
 
@@ -58,14 +58,14 @@ func (RecallHook) Instruction() string {
 }
 func (RecallHook) CurrentMark(float64) int64 { return 0 }
 func (RecallHook) ShouldFire(ctx types.HookContext) (bool, error) {
-	active, ok := findActivePlayer(ctx.Data)
+	active, ok := riotclient.FindActivePlayer(ctx.Data)
 	if !ok {
 		return false, fmt.Errorf("active player not found")
 	}
 	if active.IsDead {
 		return false, nil
 	}
-	prevActive, hadPrev := findActivePlayer(ctx.PrevData)
+	prevActive, hadPrev := riotclient.FindActivePlayer(ctx.PrevData)
 	gold := ctx.Data.ActivePlayer.CurrentGold
 	if gold < 1000 {
 		return false, nil
@@ -89,15 +89,15 @@ func (AllyGoldSpikeHook) Instruction() string {
 }
 func (AllyGoldSpikeHook) CurrentMark(float64) int64 { return 0 }
 func (AllyGoldSpikeHook) ShouldFire(ctx types.HookContext) (bool, error) {
-	active, ok := findActivePlayer(ctx.Data)
+	active, ok := riotclient.FindActivePlayer(ctx.Data)
 	if !ok {
 		return false, fmt.Errorf("active player not found")
 	}
-	prevActive, hadPrev := findActivePlayer(ctx.PrevData)
+	prevActive, hadPrev := riotclient.FindActivePlayer(ctx.PrevData)
 	if !hadPrev || prevActive.SummonerName == "" {
 		return false, nil
 	}
-	return itemCount(active.Items) > itemCount(prevActive.Items), nil
+	return riotclient.ItemCount(active.Items) > riotclient.ItemCount(prevActive.Items), nil
 }
 
 // EnemyGoldSpikeHook fires when the lane opponent buys a new item or levels up significantly.
@@ -109,19 +109,19 @@ func (EnemyGoldSpikeHook) Instruction() string {
 }
 func (EnemyGoldSpikeHook) CurrentMark(float64) int64 { return 0 }
 func (EnemyGoldSpikeHook) ShouldFire(ctx types.HookContext) (bool, error) {
-	active, ok := findActivePlayer(ctx.Data)
+	active, ok := riotclient.FindActivePlayer(ctx.Data)
 	if !ok {
 		return false, fmt.Errorf("active player not found")
 	}
-	opponent := findOpponent(ctx.Data, active.Position, active.Team)
+	opponent := riotclient.FindOpponent(ctx.Data, active.Position, active.Team)
 	if opponent.SummonerName == "" {
 		return false, nil
 	}
-	prevOpponent := findOpponent(ctx.PrevData, active.Position, active.Team)
+	prevOpponent := riotclient.FindOpponent(ctx.PrevData, active.Position, active.Team)
 	if prevOpponent.SummonerName == "" {
 		return false, nil
 	}
-	return itemCount(opponent.Items) > itemCount(prevOpponent.Items) || opponent.Level > prevOpponent.Level, nil
+	return riotclient.ItemCount(opponent.Items) > riotclient.ItemCount(prevOpponent.Items) || opponent.Level > prevOpponent.Level, nil
 }
 
 // FirstTurretHook fires when the first outer turret is destroyed.
@@ -155,36 +155,4 @@ func firstTurretEventOccurred(events []riotclient.Event) bool {
 		}
 	}
 	return false
-}
-
-func itemCount(items []riotclient.Item) int {
-	count := 0
-	for _, it := range items {
-		if it.ItemID != 0 && !it.Consumable {
-			count++
-		}
-	}
-	return count
-}
-
-func findActivePlayer(data riotclient.AllGameData) (riotclient.AllPlayer, bool) {
-	name := data.ActivePlayer.SummonerName
-	for _, p := range data.AllPlayers {
-		if p.SummonerName == name {
-			return p, true
-		}
-	}
-	return riotclient.AllPlayer{}, false
-}
-
-func findOpponent(data riotclient.AllGameData, position, activeTeam string) riotclient.AllPlayer {
-	if position == "" {
-		return riotclient.AllPlayer{}
-	}
-	for _, p := range data.AllPlayers {
-		if p.Team != activeTeam && p.Position == position {
-			return p
-		}
-	}
-	return riotclient.AllPlayer{}
 }

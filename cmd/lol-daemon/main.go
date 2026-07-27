@@ -1,6 +1,3 @@
-// Command lol-daemon runs the lol-telemetry SDK as a background service.
-// It polls the League of Legends Live Client Data API and exposes game state,
-// events, and judge advice over WebSocket for external tools like overlays.
 package main
 
 import (
@@ -16,9 +13,9 @@ import (
 )
 
 func main() {
-	defer logPanic()
+	defer service.LogPanic()
 
-	cleanup, err := setupLogging()
+	cleanup, err := service.SetupLogging("lol-daemon", "LOL_DAEMON_LOG")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "logging setup failed: %v\n", err)
 		os.Exit(1)
@@ -41,7 +38,7 @@ func main() {
 
 	if check {
 		if err := d.CheckConnection(); err != nil {
-			fatal("LoL API connection failed: %v", err)
+			service.Fatal("LoL API connection failed: %v", err)
 		}
 		fmt.Println("LoL API connection OK")
 		return
@@ -54,7 +51,7 @@ func main() {
 	fmt.Printf("Judge enabled: %v\n", cfg.JudgeEnabled)
 
 	if err := d.Run(ctx); err != nil {
-		fatal("daemon error: %v", err)
+		service.Fatal("daemon error: %v", err)
 	}
 
 	fmt.Println("lol-telemetry daemon stopped")

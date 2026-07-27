@@ -2,7 +2,10 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"lol-telemetry/internal/hooks"
@@ -11,13 +14,16 @@ import (
 	"lol-telemetry/pkg/riotclient"
 )
 
-type mockProvider struct {
-	data riotclient.AllGameData
-	err  error
-}
-
-func (m *mockProvider) GetGameData() (riotclient.AllGameData, error) {
-	return m.data, m.err
+func newTestClient(data *riotclient.AllGameData, err *error) *riotclient.Client {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if *err != nil {
+			http.Error(w, (*err).Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(*data)
+	}))
+	return riotclient.NewClientWithURL(server.URL)
 }
 
 type mockJudge struct {
@@ -35,17 +41,19 @@ func (m *mockJudge) Evaluate(ctx context.Context, req types.JudgeRequest) (types
 }
 
 func TestOrchestrator_Tick_FiresAtFiveMinuteMark(t *testing.T) {
-	provider := &mockProvider{data: gameAt(300)}
+	data := gameAt(300)
+	var err error
+	client := newTestClient(&data, &err)
 	reg := hooks.NewRegistry()
 	reg.Register(hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall and buy."}}}
 	b := payload.NewBuilder()
-	orch := NewOrchestrator(provider, reg, b, j)
+	orch := NewOrchestrator(client, reg, b, j)
 
 	// First tick establishes baseline; no trigger yet.
 	_, _ = orch.Tick(context.Background())
 
-	provider.data = gameAt(600)
+	data = gameAt(600)
 	resps, err := orch.Tick(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -62,18 +70,20 @@ func TestOrchestrator_Tick_FiresAtFiveMinuteMark(t *testing.T) {
 }
 
 func TestOrchestrator_Tick_DoesNotDuplicate(t *testing.T) {
-	provider := &mockProvider{data: gameAt(300)}
+	data := gameAt(300)
+	var err error
+	client := newTestClient(&data, &err)
 	reg := hooks.NewRegistry()
 	reg.Register(hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall and buy."}}}
 	b := payload.NewBuilder()
-	orch := NewOrchestrator(provider, reg, b, j)
+	orch := NewOrchestrator(client, reg, b, j)
 
 	_, _ = orch.Tick(context.Background())
-	provider.data = gameAt(600)
+	data = gameAt(600)
 	_, _ = orch.Tick(context.Background())
 
-	provider.data = gameAt(610)
+	data = gameAt(610)
 	resps, err := orch.Tick(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -87,23 +97,25 @@ func TestOrchestrator_Tick_DoesNotDuplicate(t *testing.T) {
 }
 
 func TestOrchestrator_Tick_ResetsWhenGameEnds(t *testing.T) {
-	provider := &mockProvider{data: gameAt(300)}
+	data := gameAt(300)
+	var err error
+	client := newTestClient(&data, &err)
 	reg := hooks.NewRegistry()
 	reg.Register(hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall."}, {Advice: "Push."}}}
 	b := payload.NewBuilder()
-	orch := NewOrchestrator(provider, reg, b, j)
+	orch := NewOrchestrator(client, reg, b, j)
 
 	_, _ = orch.Tick(context.Background())
-	provider.data = gameAt(600)
+	data = gameAt(600)
 	_, _ = orch.Tick(context.Background())
 
-	provider.data = gameAt(0)
+	data = gameAt(0)
 	_, _ = orch.Tick(context.Background())
 
-	provider.data = gameAt(600)
+	data = gameAt(600)
 	_, _ = orch.Tick(context.Background())
-	provider.data = gameAt(900)
+	data = gameAt(900)
 	resps, err := orch.Tick(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -117,27 +129,29 @@ func TestOrchestrator_Tick_ResetsWhenGameEnds(t *testing.T) {
 }
 
 func TestOrchestrator_Tick_APIErrorResets(t *testing.T) {
-	provider := &mockProvider{data: gameAt(300)}
+	data := gameAt(300)
+	var err error
+	client := newTestClient(&data, &err)
 	reg := hooks.NewRegistry()
 	reg.Register(hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall."}, {Advice: "Push."}}}
 	b := payload.NewBuilder()
-	orch := NewOrchestrator(provider, reg, b, j)
+	orch := NewOrchestrator(client, reg, b, j)
 
 	_, _ = orch.Tick(context.Background())
-	provider.data = gameAt(600)
+	data = gameAt(600)
 	_, _ = orch.Tick(context.Background())
 
-	provider.err = errors.New("api down")
-	_, err := orch.Tick(context.Background())
-	if err == nil {
+	err = errors.New("api down")
+	_, errOut := orch.Tick(context.Background())
+	if errOut == nil {
 		t.Fatal("expected error")
 	}
 
-	provider.err = nil
-	provider.data = gameAt(600)
+	err = nil
+	data = gameAt(600)
 	_, _ = orch.Tick(context.Background())
-	provider.data = gameAt(900)
+	data = gameAt(900)
 	resps, err := orch.Tick(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

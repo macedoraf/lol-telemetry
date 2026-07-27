@@ -2,7 +2,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -179,5 +178,3 @@ var (
 	activeTabStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#5A56E0")).Bold(true)
 )
 
-// Sprintf helper avoids unused import when iterating.
-var _ = fmt.Sprintf

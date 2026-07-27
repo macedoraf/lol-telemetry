@@ -182,3 +182,38 @@ type AllGameData struct {
 	Events       Events       `json:"events"`
 	GameData     GameData     `json:"gameData"`
 }
+
+// FindActivePlayer returns the player whose summoner name matches the active player.
+func FindActivePlayer(data AllGameData) (AllPlayer, bool) {
+	name := data.ActivePlayer.SummonerName
+	for _, p := range data.AllPlayers {
+		if p.SummonerName == name {
+			return p, true
+		}
+	}
+	return AllPlayer{}, false
+}
+
+// FindOpponent returns the player on the opposite team with the same position.
+func FindOpponent(data AllGameData, position, activeTeam string) AllPlayer {
+	if position == "" {
+		return AllPlayer{}
+	}
+	for _, p := range data.AllPlayers {
+		if p.Team != activeTeam && p.Position == position {
+			return p
+		}
+	}
+	return AllPlayer{}
+}
+
+// ItemCount returns the number of non-consumable, non-zero items a player has.
+func ItemCount(items []Item) int {
+	count := 0
+	for _, it := range items {
+		if it.ItemID != 0 && !it.Consumable {
+			count++
+		}
+	}
+	return count
+}

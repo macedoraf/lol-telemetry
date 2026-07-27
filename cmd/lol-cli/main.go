@@ -1,8 +1,3 @@
-// Command lol-cli is the interactive TUI client for the lol-telemetry daemon.
-// It connects to the daemon over WebSocket and displays live game state, Judge
-// advice, game events, and raw messages. The daemon must be running first:
-//
-//	go run ./cmd/lol-daemon
 package main
 
 import (
@@ -15,12 +10,13 @@ import (
 	"github.com/charmbracelet/x/term"
 
 	"lol-telemetry/internal/tui"
+	"lol-telemetry/pkg/service"
 )
 
 func main() {
-	defer logPanic()
+	defer service.LogPanic()
 
-	cleanup, err := setupLogging()
+	cleanup, err := service.SetupLogging("lol-cli", "LOL_CLI_LOG")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "logging setup failed: %v\n", err)
 		os.Exit(1)
@@ -41,7 +37,7 @@ func main() {
 
 	if check {
 		if err := checkDaemon(daemonAddr); err != nil {
-			fatal("daemon check failed: %v", err)
+			service.Fatal("daemon check failed: %v", err)
 		}
 		fmt.Printf("daemon reachable at %s\n", daemonAddr)
 		return
@@ -52,7 +48,7 @@ func main() {
 			log.Printf("stdin is not a TTY; falling back to raw mode")
 		}
 		if err := runRawClient(daemonAddr); err != nil {
-			fatal("raw client error: %v", err)
+			service.Fatal("raw client error: %v", err)
 		}
 		return
 	}
@@ -63,11 +59,10 @@ func main() {
 	}
 	program := tea.NewProgram(tui.NewModel(daemonAddr), opts...)
 	if _, err := program.Run(); err != nil {
-		fatal("TUI error: %v", err)
+		service.Fatal("TUI error: %v", err)
 	}
 }
 
-// isTTY reports whether stdin is an interactive terminal.
 func isTTY() bool {
 	return term.IsTerminal(os.Stdin.Fd())
 }

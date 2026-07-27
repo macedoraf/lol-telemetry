@@ -1,4 +1,3 @@
-// Package service provides the background daemon and WebSocket API for external clients.
 package service
 
 import (
@@ -24,20 +23,17 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // allow all origins for local dev
+		return true
 	},
 }
 
-// Hub maintains the set of active clients and broadcasts messages to them.
 type Hub struct {
 	clients    map[*Client]bool
 	broadcast  chan []byte
 	register   chan *Client
 	unregister chan *Client
-	mu         sync.RWMutex
 }
 
-// NewHub creates a new Hub.
 func NewHub() *Hub {
 	return &Hub{
 		clients:    make(map[*Client]bool),
@@ -47,28 +43,21 @@ func NewHub() *Hub {
 	}
 }
 
-// Run starts the hub's main loop.
 func (h *Hub) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			h.closeAll()
 			return
 		case client := <-h.register:
-			h.mu.Lock()
 			h.clients[client] = true
-			h.mu.Unlock()
 			log.Printf("WS client connected: %s (total: %d)", client.addr, len(h.clients))
 		case client := <-h.unregister:
-			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
 				log.Printf("WS client disconnected: %s (total: %d)", client.addr, len(h.clients))
 			}
-			h.mu.Unlock()
 		case message := <-h.broadcast:
-			h.mu.RLock()
 			for client := range h.clients {
 				select {
 				case client.send <- message:
@@ -77,12 +66,10 @@ func (h *Hub) Run(ctx context.Context) {
 					delete(h.clients, client)
 				}
 			}
-			h.mu.RUnlock()
 		}
 	}
 }
 
-// Broadcast sends a message to all connected clients.
 func (h *Hub) Broadcast(msg []byte) {
 	select {
 	case h.broadcast <- msg:
@@ -91,23 +78,6 @@ func (h *Hub) Broadcast(msg []byte) {
 	}
 }
 
-// ClientCount returns the number of connected clients.
-func (h *Hub) ClientCount() int {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return len(h.clients)
-}
-
-func (h *Hub) closeAll() {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	for client := range h.clients {
-		close(client.send)
-	}
-	h.clients = make(map[*Client]bool)
-}
-
-// Client is a single WebSocket connection.
 type Client struct {
 	hub  *Hub
 	conn *websocket.Conn
@@ -115,7 +85,6 @@ type Client struct {
 	addr string
 }
 
-// ServeWS upgrades the HTTP connection to WebSocket and registers the client.
 func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -188,7 +157,6 @@ func (c *Client) writePump() {
 	}
 }
 
-// BroadcastGameState sends the current game state to all clients.
 func (h *Hub) BroadcastGameState(gs GameState) error {
 	data, err := json.Marshal(WSMessage{
 		Type:    MsgTypeGameState,
@@ -203,7 +171,6 @@ func (h *Hub) BroadcastGameState(gs GameState) error {
 	return nil
 }
 
-// BroadcastAdvice sends a Judge advice to all clients.
 func (h *Hub) BroadcastAdvice(hookName string, gameMinute int, advice, reasoning string) error {
 	data, err := json.Marshal(WSMessage{
 		Type:    MsgTypeJudgeAdvice,
@@ -218,7 +185,6 @@ func (h *Hub) BroadcastAdvice(hookName string, gameMinute int, advice, reasoning
 	return nil
 }
 
-// BroadcastEvent sends a game event to all clients.
 func (h *Hub) BroadcastEvent(event EventMessage) error {
 	data, err := json.Marshal(WSMessage{
 		Type:    MsgTypeEvent,
@@ -233,7 +199,6 @@ func (h *Hub) BroadcastEvent(event EventMessage) error {
 	return nil
 }
 
-// BroadcastStatus sends a status update.
 func (h *Hub) BroadcastStatus(status string, detail string) error {
 	data, err := json.Marshal(WSMessage{
 		Type:    MsgTypeError,
@@ -248,19 +213,13 @@ func (h *Hub) BroadcastStatus(status string, detail string) error {
 	return nil
 }
 
-// helloMessage returns the serialized hello envelope.
-func (h *Hub) helloMessage() ([]byte, error) {
-	return json.Marshal(WSMessage{
+func (h *Hub) sendHello(c *Client) error {
+	data, err := json.Marshal(WSMessage{
 		Type:    MsgTypeHello,
 		Payload: mustMarshal(HelloMessage{Version: "1.0.0", ServerTS: time.Now().UnixMilli(), Protocol: "lol-telemetry/ws/v1"}),
 		Seq:     h.nextSeq(),
 		Ts:      time.Now().UnixMilli(),
 	})
-}
-
-// sendHello sends the hello message directly to a single client.
-func (h *Hub) sendHello(c *Client) error {
-	data, err := h.helloMessage()
 	if err != nil {
 		return err
 	}
@@ -270,17 +229,6 @@ func (h *Hub) sendHello(c *Client) error {
 		close(c.send)
 		return fmt.Errorf("client send channel full")
 	}
-	return nil
-}
-
-// BroadcastHello sends the hello message to all connected clients.
-// ponytail: kept for backward compatibility; new clients receive hello on connect.
-func (h *Hub) BroadcastHello() error {
-	data, err := h.helloMessage()
-	if err != nil {
-		return err
-	}
-	h.Broadcast(data)
 	return nil
 }
 

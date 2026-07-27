@@ -11,12 +11,8 @@ import (
 	"lol-telemetry/pkg/riotclient"
 )
 
-// GameDataProvider abstracts the source of live game snapshots.
-type GameDataProvider interface {
-	GetGameData() (riotclient.AllGameData, error)
-}
-
 // Judge evaluates a JudgeRequest and returns a JudgeResponse.
+// ponytail: kept as a local interface so tests can inject a fake LLM.
 type Judge interface {
 	Evaluate(ctx context.Context, req types.JudgeRequest) (types.JudgeResponse, error)
 }
@@ -31,7 +27,7 @@ type Result struct {
 
 // Orchestrator runs the periodic evaluation loop.
 type Orchestrator struct {
-	provider  GameDataProvider
+	provider  *riotclient.Client
 	registry  *hooks.Registry
 	builder   *payload.Builder
 	judge     Judge
@@ -41,7 +37,7 @@ type Orchestrator struct {
 }
 
 // NewOrchestrator creates a new orchestrator.
-func NewOrchestrator(provider GameDataProvider, registry *hooks.Registry, builder *payload.Builder, j Judge) *Orchestrator {
+func NewOrchestrator(provider *riotclient.Client, registry *hooks.Registry, builder *payload.Builder, j Judge) *Orchestrator {
 	return &Orchestrator{
 		provider:  provider,
 		registry:  registry,
@@ -86,6 +82,10 @@ func (o *Orchestrator) Tick(ctx context.Context) ([]Result, error) {
 	if err != nil {
 		o.lastErr = err
 		return nil, fmt.Errorf("evaluate hooks: %w", err)
+	}
+
+	if o.judge == nil {
+		return nil, nil
 	}
 
 	var results []Result
