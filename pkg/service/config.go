@@ -43,6 +43,17 @@ func LoadDaemonConfigFromEnv() DaemonConfig {
 
 	debug := os.Getenv("LOL_DEBUG") == "true" || os.Getenv("LOL_DEBUG") == "1"
 
+	judgeLanguage := os.Getenv("JUDGE_LANGUAGE")
+	if judgeLanguage == "" {
+		judgeLanguage = "en"
+	}
+
+	recordEnabled := os.Getenv("LOL_RECORD_ENABLED") == "true" || os.Getenv("LOL_RECORD_ENABLED") == "1"
+	recordingsDir := os.Getenv("LOL_RECORDINGS_DIR")
+	if recordingsDir == "" {
+		recordingsDir = "./recordings"
+	}
+
 	return DaemonConfig{
 		Port:            port,
 		BaseURL:         baseURL,
@@ -51,5 +62,8 @@ func LoadDaemonConfigFromEnv() DaemonConfig {
 		OpenRouterKey:   apiKey,
 		OpenRouterModel: model,
 		Debug:           debug,
+		JudgeLanguage:   judgeLanguage,
+		RecordEnabled:   recordEnabled,
+		RecordingsDir:   recordingsDir,
 	}
 }

@@ -32,7 +32,7 @@ func main() {
 	flag.BoolVar(&cfg.Debug, "debug", cfg.Debug, "enable verbose HTTP logging for the LoL API")
 	flag.Parse()
 
-	log.Printf("config: port=%s lolUrl=%s poll=%s judge=%v debug=%v", cfg.Port, cfg.BaseURL, cfg.PollInterval, cfg.JudgeEnabled, cfg.Debug)
+	log.Printf("config: port=%s lolUrl=%s poll=%s judge=%v debug=%v lang=%s", cfg.Port, cfg.BaseURL, cfg.PollInterval, cfg.JudgeEnabled, cfg.Debug, cfg.JudgeLanguage)
 
 	d := service.NewDaemon(cfg)
 

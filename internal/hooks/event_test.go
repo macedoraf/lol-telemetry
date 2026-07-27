@@ -130,7 +130,7 @@ func TestFirstTurretHook_ShouldFire(t *testing.T) {
 }
 
 func TestLaningPhaseEndHook_ShouldFire(t *testing.T) {
-	hook := LaningPhaseEndHook{}
+	hook := &LaningPhaseEndHook{}
 	prev := dataAt(830, []riotclient.AllPlayer{playerAlive("P")}, 1000, nil)
 	curr := dataAt(840, []riotclient.AllPlayer{playerAlive("P")}, 1000, nil)
 	if got, _ := hook.ShouldFire(contextWith(prev, curr)); !got {
@@ -138,6 +138,52 @@ func TestLaningPhaseEndHook_ShouldFire(t *testing.T) {
 	}
 	if got, _ := hook.ShouldFire(contextWith(curr, curr)); got {
 		t.Errorf("expected LaningPhaseEndHook not to fire twice")
+	}
+}
+
+func TestLaningPhaseEndHook_Configure_Mark(t *testing.T) {
+	h := &LaningPhaseEndHook{}
+	if h.mark() != 840 {
+		t.Errorf("default mark = %f, want 840", h.mark())
+	}
+	if err := h.Configure(map[string]any{"markSeconds": float64(600)}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if h.MarkSeconds != 600 {
+		t.Errorf("mark = %f, want 600", h.MarkSeconds)
+	}
+	prev := dataAt(590, []riotclient.AllPlayer{playerAlive("P")}, 1000, nil)
+	curr := dataAt(600, []riotclient.AllPlayer{playerAlive("P")}, 1000, nil)
+	ctx := contextWith(prev, curr)
+	ctx.PrevFired = map[string]int64{LaningPhaseEndHookName: 0}
+	fire, err := h.ShouldFire(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !fire {
+		t.Errorf("expected to fire at 600s with custom mark")
+	}
+}
+
+func TestRecallHook_Configure_Threshold(t *testing.T) {
+	h := &RecallHook{}
+	if h.goldThreshold() != 1000 {
+		t.Errorf("default threshold = %f, want 1000", h.goldThreshold())
+	}
+	if h.minGameTime() != 60 {
+		t.Errorf("default minGameTime = %f, want 60", h.minGameTime())
+	}
+	if err := h.Configure(map[string]any{"goldThreshold": float64(500)}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if h.GoldThreshold != 500 {
+		t.Errorf("threshold = %f, want 500", h.GoldThreshold)
+	}
+	if err := h.Configure(map[string]any{"minGameTimeSeconds": float64(120)}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if h.MinGameTimeSeconds != 120 {
+		t.Errorf("minGameTimeSeconds = %f, want 120", h.MinGameTimeSeconds)
 	}
 }
 

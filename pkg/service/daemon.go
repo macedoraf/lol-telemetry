@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"lol-telemetry/internal/judge/openrouter"
 	"lol-telemetry/internal/judge/payload"
 	"lol-telemetry/internal/orchestrator"
+	"lol-telemetry/internal/recorder"
 	"lol-telemetry/pkg/riotclient"
 )
 
@@ -25,6 +27,11 @@ type Daemon struct {
 	client       *riotclient.Client
 	hub          *Hub
 	orch         *orchestrator.Orchestrator
+	builder      *payload.Builder
+	reg          *hooks.Registry
+	runtime      *RuntimeConfig
+	recorder     *recorder.Recorder
+	sessionMgr   recorder.SessionManager
 	pollInterval time.Duration
 	lastEvents   int
 	connected    bool
@@ -40,6 +47,9 @@ type DaemonConfig struct {
 	OpenRouterKey   string
 	OpenRouterModel string
 	Debug           bool
+	JudgeLanguage   string // en, pt-BR, es
+	RecordEnabled   bool
+	RecordingsDir   string
 }
 
 // NewDaemon creates a new daemon instance.
@@ -77,26 +87,45 @@ func NewDaemon(cfg DaemonConfig) *Daemon {
 	}
 
 	reg := hooks.NewRegistry()
-	reg.Register(hooks.Periodic5MinHook{})
+	reg.Register(&hooks.Periodic5MinHook{})
 	reg.Register(hooks.GameStartHook{})
 	reg.Register(hooks.PlayerDeathHook{})
-	reg.Register(hooks.RecallHook{})
+	reg.Register(&hooks.RecallHook{})
 	reg.Register(hooks.AllyGoldSpikeHook{})
 	reg.Register(hooks.EnemyGoldSpikeHook{})
 	reg.Register(hooks.FirstTurretHook{})
-	reg.Register(hooks.LaningPhaseEndHook{})
+	reg.Register(&hooks.LaningPhaseEndHook{})
 
-	builder := payload.NewBuilder()
+	normLang := payload.NormalizeLanguage(cfg.JudgeLanguage)
+	if normLang != cfg.JudgeLanguage {
+		log.Printf("warning: invalid JUDGE_LANGUAGE=%q, using %q", cfg.JudgeLanguage, normLang)
+	}
+	builder := payload.NewBuilder(normLang)
 	orch := orchestrator.NewOrchestrator(client, reg, builder, j)
+	runtime := NewRuntimeConfig(normLang, reg, builder, orch)
 
-	return &Daemon{
+	d := &Daemon{
 		config:       cfg,
 		client:       client,
 		hub:          hub,
 		orch:         orch,
+		builder:      builder,
+		reg:          reg,
+		runtime:      runtime,
 		pollInterval: cfg.PollInterval,
 		lastEvents:   -1,
 	}
+
+	if cfg.RecordEnabled {
+		rec, err := recorder.New(cfg.RecordingsDir)
+		if err != nil {
+			log.Printf("failed to create recorder: %v; recording disabled", err)
+		} else {
+			d.recorder = rec
+		}
+	}
+
+	return d
 }
 
 // Run starts the WebSocket server and the polling loop.
@@ -110,6 +139,16 @@ func (d *Daemon) Run(ctx context.Context) error {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
+	})
+	mux.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handleGetConfig(d.runtime)(w, r)
+		case http.MethodPatch:
+			handlePatchConfig(d.runtime)(w, r)
+		default:
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		}
 	})
 
 	server := &http.Server{
@@ -125,6 +164,16 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}()
 
 	go d.pollLoop(ctx)
+
+	if d.recorder != nil {
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := d.recorder.Close(shutdownCtx); err != nil {
+				log.Printf("recorder close error: %v", err)
+			}
+		}()
+	}
 
 	log.Printf("lol-telemetry daemon listening on ws://localhost:%s/ws", d.config.Port)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -160,6 +209,9 @@ func (d *Daemon) tick(ctx context.Context) {
 		}
 		d.connected = false
 		d.hub.BroadcastStatus("lcu_error", err.Error())
+		if d.recorder != nil {
+			d.observeRecording(0, false)
+		}
 		return
 	}
 
@@ -167,6 +219,11 @@ func (d *Daemon) tick(ctx context.Context) {
 		log.Printf("LoL API connected: gameTime=%.1f mode=%s", data.GameData.GameTime, data.GameData.GameMode)
 		d.connected = true
 		d.lastErr = ""
+	}
+
+	if d.recorder != nil {
+		d.observeRecording(data.GameData.GameTime, true)
+		d.recordSnapshot(data)
 	}
 
 	name, err := d.client.GetActivePlayerName()
@@ -191,8 +248,66 @@ func (d *Daemon) tick(ctx context.Context) {
 			if err := d.hub.BroadcastAdvice(r.HookName, r.GameMinute, r.Advice, r.Reasoning); err != nil {
 				log.Printf("broadcast advice error: %v", err)
 			}
+			if d.recorder != nil {
+				if sid := d.recorder.SessionID(); sid != "" {
+					d.recorder.RecordTip(recorder.TipRecord{
+						Version:    1,
+						Type:       "tip",
+						Ts:         time.Now().UnixMilli(),
+						Session:    sid,
+						GameTime:   r.GameTime,
+						GameMinute: r.GameMinute,
+						HookName:   r.HookName,
+						Question:   r.Question,
+						Advice:     r.Advice,
+						Reasoning:  r.Reasoning,
+					})
+				} else {
+					log.Printf("recording: tip dropped (no active session)")
+				}
+			}
 		}
 	}
+}
+
+func (d *Daemon) observeRecording(gameTime float64, apiOK bool) {
+	id, started, ended := d.sessionMgr.Observe(gameTime, apiOK)
+	if started && ended {
+		prev := d.recorder.SessionID()
+		if err := d.recorder.StartSession(id); err != nil {
+			log.Printf("recording: failed to start session %s: %v", id, err)
+			return
+		}
+		log.Printf("recording: session %s ended, new session %s started (written=%d dropped=%d)", prev, id, d.recorder.Written(), d.recorder.Dropped())
+		return
+	}
+	if started {
+		if err := d.recorder.StartSession(id); err != nil {
+			log.Printf("recording: failed to start session %s: %v", id, err)
+			return
+		}
+		log.Printf("recording: session %s started", id)
+	}
+	if ended {
+		d.recorder.EndSession()
+		log.Printf("recording: session %s ended (written=%d dropped=%d)", id, d.recorder.Written(), d.recorder.Dropped())
+	}
+}
+
+func (d *Daemon) recordSnapshot(data riotclient.AllGameData) {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("recording: failed to marshal snapshot: %v", err)
+		return
+	}
+	d.recorder.Record(recorder.TelemetryRecord{
+		Version:  1,
+		Type:     "telemetry",
+		Ts:       time.Now().UnixMilli(),
+		Session:  d.recorder.SessionID(),
+		GameTime: data.GameData.GameTime,
+		Data:     raw,
+	})
 }
 
 func (d *Daemon) broadcastEvents(data riotclient.AllGameData) {

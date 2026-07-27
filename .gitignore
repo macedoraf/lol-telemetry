@@ -5,3 +5,7 @@
 *.out
 vendor/
 dist/
+
+# Code signing certificates (NEVER commit private keys)
+*.pfx
+*.pem

@@ -3,17 +3,52 @@ package payload
 
 import (
 	"fmt"
+	"strings"
+	"sync/atomic"
 
 	"lol-telemetry/internal/types"
 	"lol-telemetry/pkg/riotclient"
 )
 
-// Builder transforms riotclient.AllGameData into a types.JudgeRequest.
-type Builder struct{}
+var languageNames = map[string]string{
+	"en":    "English",
+	"pt-BR": "Brazilian Portuguese",
+	"es":    "Spanish",
+}
 
-// NewBuilder returns a new payload builder.
-func NewBuilder() *Builder {
-	return &Builder{}
+// Builder transforms riotclient.AllGameData into a types.JudgeRequest.
+type Builder struct {
+	lang           atomic.Value // stores string, always normalized
+	promptOverride atomic.Value // stores string, may be empty
+}
+
+// NewBuilder returns a new payload builder with the given language.
+func NewBuilder(language string) *Builder {
+	b := &Builder{}
+	b.SetLanguage(language)
+	return b
+}
+
+// SetLanguage changes the output language thread-safely.
+func (b *Builder) SetLanguage(lang string) {
+	b.lang.Store(NormalizeLanguage(lang))
+}
+
+// Language returns the current normalized language code.
+func (b *Builder) Language() string {
+	v := b.lang.Load()
+	if v == nil {
+		return "en"
+	}
+	return v.(string)
+}
+
+// NormalizeLanguage validates a language code and returns a known value.
+func NormalizeLanguage(lang string) string {
+	if _, ok := languageNames[lang]; ok {
+		return lang
+	}
+	return "en"
 }
 
 // Build creates a JudgeRequest from the current game snapshot.
@@ -57,7 +92,7 @@ func (b *Builder) Build(data riotclient.AllGameData, question string) (types.Jud
 			Events:   eventsFromRiotEvents(data.Events.Events),
 		},
 		Question:     question,
-		SystemPrompt: defaultSystemPrompt(),
+		SystemPrompt: b.systemPrompt(),
 		Events:       eventsFromRiotEvents(data.Events.Events),
 	}
 
@@ -164,4 +199,44 @@ func eventsFromRiotEvents(events []riotclient.Event) []types.EventSnapshot {
 
 func defaultSystemPrompt() string {
 	return "You are a League of Legends tactical assistant. Analyze the current match state and respond ONLY with valid JSON: {\"advice\": \"...\", \"reasoning\": \"...\"}. Advice: single short actionable sentence (max 140 characters). Reasoning: one short sentence citing specific evidence from the data. Focus on macro: objectives, recalls, power spikes, rotations or risk warnings. Be direct, like a coach in the player's ear."
+}
+
+// SetPromptOverride sets a custom system prompt base. Empty string clears the
+// override and restores the default prompt. Returns an error for whitespace-only
+// or overly long prompts.
+func (b *Builder) SetPromptOverride(prompt string) error {
+	trimmed := strings.TrimSpace(prompt)
+	if prompt != "" && trimmed == "" {
+		return fmt.Errorf("prompt cannot be whitespace-only")
+	}
+	if len(trimmed) > 4000 {
+		return fmt.Errorf("prompt exceeds 4000 characters")
+	}
+	b.promptOverride.Store(trimmed)
+	return nil
+}
+
+// PromptOverride returns the user-supplied prompt override, or "" if none.
+func (b *Builder) PromptOverride() string {
+	v := b.promptOverride.Load()
+	if v == nil {
+		return ""
+	}
+	return v.(string)
+}
+
+// EffectivePrompt returns the prompt that will be sent to the LLM, including
+// the language directive.
+func (b *Builder) EffectivePrompt() string {
+	return b.systemPrompt()
+}
+
+// systemPrompt returns the base prompt with a language directive appended.
+func (b *Builder) systemPrompt() string {
+	base := defaultSystemPrompt()
+	if override := b.PromptOverride(); override != "" {
+		base = override
+	}
+	langName := languageNames[b.Language()]
+	return base + "\nRespond entirely in " + langName + ". JSON keys must remain in English."
 }

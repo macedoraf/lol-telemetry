@@ -21,6 +21,8 @@ type Judge interface {
 type Result struct {
 	HookName   string
 	GameMinute int
+	GameTime   float64
+	Question   string
 	Advice     string
 	Reasoning  string
 }
@@ -103,11 +105,14 @@ func (o *Orchestrator) Tick(ctx context.Context) ([]Result, error) {
 		results = append(results, Result{
 			HookName:   trigger.HookName,
 			GameMinute: req.GameMinute,
+			GameTime:   gameTime,
+			Question:   trigger.Question,
 			Advice:     resp.Advice,
 			Reasoning:  resp.Reasoning,
 		})
-		mark := hooks.CurrentMark(gameTime)
-		o.prevFired[trigger.HookName] = mark
+		if hook, ok := o.registry.GetHook(trigger.HookName); ok {
+			o.prevFired[trigger.HookName] = hook.CurrentMark(gameTime)
+		}
 	}
 
 	o.lastErr = nil
@@ -120,4 +125,14 @@ func (o *Orchestrator) reset() {
 		delete(o.prevFired, k)
 	}
 	o.prevData = riotclient.AllGameData{}
+}
+
+// ResetHook clears the deduplication mark for a hook, preventing retroactive fire
+// after configuration changes.
+func (o *Orchestrator) ResetHook(name string) {
+	if hook, ok := o.registry.GetHook(name); ok {
+		if data, err := o.provider.GetGameData(); err == nil {
+			o.prevFired[name] = hook.CurrentMark(data.GameData.GameTime)
+		}
+	}
 }

@@ -45,9 +45,9 @@ func TestOrchestrator_Tick_FiresAtFiveMinuteMark(t *testing.T) {
 	var err error
 	client := newTestClient(&data, &err)
 	reg := hooks.NewRegistry()
-	reg.Register(hooks.Periodic5MinHook{})
+	reg.Register(&hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall and buy."}}}
-	b := payload.NewBuilder()
+	b := payload.NewBuilder("en")
 	orch := NewOrchestrator(client, reg, b, j)
 
 	// First tick establishes baseline; no trigger yet.
@@ -64,6 +64,12 @@ func TestOrchestrator_Tick_FiresAtFiveMinuteMark(t *testing.T) {
 	if resps[0].Advice != "Recall and buy." {
 		t.Errorf("advice = %s, want Recall and buy.", resps[0].Advice)
 	}
+	if resps[0].GameTime != 600 {
+		t.Errorf("gameTime = %f, want 600", resps[0].GameTime)
+	}
+	if resps[0].Question == "" {
+		t.Errorf("question is empty")
+	}
 	if j.calls != 1 {
 		t.Errorf("judge calls = %d, want 1", j.calls)
 	}
@@ -74,9 +80,9 @@ func TestOrchestrator_Tick_DoesNotDuplicate(t *testing.T) {
 	var err error
 	client := newTestClient(&data, &err)
 	reg := hooks.NewRegistry()
-	reg.Register(hooks.Periodic5MinHook{})
+	reg.Register(&hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall and buy."}}}
-	b := payload.NewBuilder()
+	b := payload.NewBuilder("en")
 	orch := NewOrchestrator(client, reg, b, j)
 
 	_, _ = orch.Tick(context.Background())
@@ -101,9 +107,9 @@ func TestOrchestrator_Tick_ResetsWhenGameEnds(t *testing.T) {
 	var err error
 	client := newTestClient(&data, &err)
 	reg := hooks.NewRegistry()
-	reg.Register(hooks.Periodic5MinHook{})
+	reg.Register(&hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall."}, {Advice: "Push."}}}
-	b := payload.NewBuilder()
+	b := payload.NewBuilder("en")
 	orch := NewOrchestrator(client, reg, b, j)
 
 	_, _ = orch.Tick(context.Background())
@@ -133,9 +139,9 @@ func TestOrchestrator_Tick_APIErrorResets(t *testing.T) {
 	var err error
 	client := newTestClient(&data, &err)
 	reg := hooks.NewRegistry()
-	reg.Register(hooks.Periodic5MinHook{})
+	reg.Register(&hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall."}, {Advice: "Push."}}}
-	b := payload.NewBuilder()
+	b := payload.NewBuilder("en")
 	orch := NewOrchestrator(client, reg, b, j)
 
 	_, _ = orch.Tick(context.Background())

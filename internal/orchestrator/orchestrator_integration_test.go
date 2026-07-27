@@ -37,10 +37,10 @@ func TestIntegration_EndToEnd_FiresAtFiveMinuteMark(t *testing.T) {
 	client.BaseURL = server.URL + "/liveclientdata"
 
 	reg := hooks.NewRegistry()
-	reg.Register(hooks.Periodic5MinHook{})
+	reg.Register(&hooks.Periodic5MinHook{})
 
 	judge := &mockJudge{responses: []types.JudgeResponse{{Advice: "Secure dragon and push mid."}}}
-	builder := payload.NewBuilder()
+	builder := payload.NewBuilder("en")
 	orch := NewOrchestrator(client, reg, builder, judge)
 
 	_, _ = orch.Tick(context.Background())
@@ -74,10 +74,10 @@ func TestIntegration_EndToEnd_LateStartFiresAtNextMark(t *testing.T) {
 	client.BaseURL = server.URL + "/liveclientdata"
 
 	reg := hooks.NewRegistry()
-	reg.Register(hooks.Periodic5MinHook{})
+	reg.Register(&hooks.Periodic5MinHook{})
 
 	judge := &mockJudge{responses: []types.JudgeResponse{{Advice: "Late start advice."}}}
-	builder := payload.NewBuilder()
+	builder := payload.NewBuilder("en")
 	orch := NewOrchestrator(client, reg, builder, judge)
 
 	// First tick at 10:10 should NOT fire because 10:00 mark is in the past
@@ -104,10 +104,10 @@ func TestIntegration_EndToEnd_APIErrorDoesNotCrash(t *testing.T) {
 	client.BaseURL = server.URL + "/liveclientdata"
 
 	reg := hooks.NewRegistry()
-	reg.Register(hooks.Periodic5MinHook{})
+	reg.Register(&hooks.Periodic5MinHook{})
 
 	judge := &mockJudge{}
-	builder := payload.NewBuilder()
+	builder := payload.NewBuilder("en")
 	orch := NewOrchestrator(client, reg, builder, judge)
 
 	_, err := orch.Tick(context.Background())
