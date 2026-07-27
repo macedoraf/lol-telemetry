@@ -30,12 +30,22 @@ func main() {
 	var daemonAddr string
 	var rawMode bool
 	var noAlt bool
+	var check bool
 	flag.StringVar(&daemonAddr, "daemon", "ws://localhost:8080/ws", "daemon WebSocket address")
 	flag.BoolVar(&rawMode, "raw", false, "print raw WebSocket messages instead of launching the TUI")
 	flag.BoolVar(&noAlt, "no-alt", false, "disable alternate screen buffer (useful for some Windows terminals)")
+	flag.BoolVar(&check, "check", false, "test the daemon WebSocket connection and exit")
 	flag.Parse()
 
-	log.Printf("flags: daemon=%s raw=%v noAlt=%v", daemonAddr, rawMode, noAlt)
+	log.Printf("flags: daemon=%s raw=%v noAlt=%v check=%v", daemonAddr, rawMode, noAlt, check)
+
+	if check {
+		if err := checkDaemon(daemonAddr); err != nil {
+			fatal("daemon check failed: %v", err)
+		}
+		fmt.Printf("daemon reachable at %s\n", daemonAddr)
+		return
+	}
 
 	if rawMode || !isTTY() {
 		if !rawMode && !isTTY() {

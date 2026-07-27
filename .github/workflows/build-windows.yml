@@ -24,12 +24,19 @@ jobs:
       - name: Run tests
         run: go test ./...
 
-      - name: Build Windows artifact
+      - name: Build Windows artifacts
         run: make build-windows
 
-      - name: Upload Windows artifact
+      - name: Upload Windows CLI artifact
         uses: actions/upload-artifact@v4
         with:
           name: lol-cli-windows
           path: dist/lol-cli.exe
+          if-no-files-found: error
+
+      - name: Upload Windows daemon artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lol-daemon-windows
+          path: dist/lol-daemon.exe
           if-no-files-found: error

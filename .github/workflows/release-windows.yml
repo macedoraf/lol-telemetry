@@ -41,7 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Windows artifact
+      - name: Build Windows artifacts
         run: make build-windows
 
       - name: Create GitHub Release
@@ -49,7 +49,9 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.name }}
           name: ${{ steps.tag.outputs.name }}
-          files: dist/lol-cli.exe
+          files: |
+            dist/lol-cli.exe
+            dist/lol-daemon.exe
           prerelease: ${{ github.ref_type != 'tag' }}
           generate_release_notes: true
         env:

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -45,6 +46,34 @@ func runRawClient(daemonAddr string) error {
 		}
 		printRawMessage(msg)
 	}
+}
+
+// checkDaemon dials the daemon WebSocket, waits for the hello message, and
+// reports whether the daemon is reachable.
+func checkDaemon(daemonAddr string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	conn, _, err := websocket.DefaultDialer.DialContext(ctx, daemonAddr, nil)
+	if err != nil {
+		return fmt.Errorf("dial %s: %w", daemonAddr, err)
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_, msg, err := conn.ReadMessage()
+	if err != nil {
+		return fmt.Errorf("read from %s: %w", daemonAddr, err)
+	}
+
+	var envelope service.WSMessage
+	if err := json.Unmarshal(msg, &envelope); err != nil {
+		return fmt.Errorf("parse hello from %s: %w", daemonAddr, err)
+	}
+	if envelope.Type != service.MsgTypeHello {
+		return fmt.Errorf("expected hello, got %s", envelope.Type)
+	}
+	return nil
 }
 
 func printRawMessage(msg []byte) {

@@ -10,4 +10,4 @@ RUN go mod download
 
 # Default command: run the full test suite and a CLI smoke test.
 # docker-compose.yml overrides this to inject the mock API URL for integration tests.
-CMD ["sh", "-c", "go test ./... && go run cmd/lol-cli/main.go --mock testdata/mocks/allgamedata.json"]
+CMD ["sh", "-c", "go test ./... && go run cmd/lol-daemon/main.go -check -debug"]

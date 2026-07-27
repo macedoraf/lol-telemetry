@@ -37,13 +37,17 @@ services:
       - lol-telemetry-test
     environment:
       - MOCK_API_URL=https://mock-api:2999/liveclientdata
+      - LOL_BASE_URL=https://mock-api:2999/liveclientdata
     command:
       - sh
       - -c
       - |
         go test ./... &&
         go test -tags=integration ./pkg/riotclient &&
-        go run cmd/lol-cli/main.go --mock testdata/mocks/allgamedata.json --smoke-test
+        go run cmd/lol-daemon/main.go -check -debug &&
+        (go run cmd/lol-daemon/main.go -port 8088 &) &&
+        sleep 2 &&
+        go run cmd/lol-cli/main.go -check -daemon ws://localhost:8088/ws
 
 networks:
   lol-telemetry-test:
