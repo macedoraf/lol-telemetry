@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -128,6 +129,11 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		addr: r.RemoteAddr,
 	}
 	client.hub.register <- client
+	if err := hub.sendHello(client); err != nil {
+		log.Printf("WS hello error for %s: %v", client.addr, err)
+		client.conn.Close()
+		return
+	}
 
 	go client.writePump()
 	go client.readPump()
@@ -242,14 +248,35 @@ func (h *Hub) BroadcastStatus(status string, detail string) error {
 	return nil
 }
 
-// BroadcastHello sends the hello message to a newly connected client.
-func (h *Hub) BroadcastHello() error {
-	data, err := json.Marshal(WSMessage{
+// helloMessage returns the serialized hello envelope.
+func (h *Hub) helloMessage() ([]byte, error) {
+	return json.Marshal(WSMessage{
 		Type:    MsgTypeHello,
 		Payload: mustMarshal(HelloMessage{Version: "1.0.0", ServerTS: time.Now().UnixMilli(), Protocol: "lol-telemetry/ws/v1"}),
 		Seq:     h.nextSeq(),
 		Ts:      time.Now().UnixMilli(),
 	})
+}
+
+// sendHello sends the hello message directly to a single client.
+func (h *Hub) sendHello(c *Client) error {
+	data, err := h.helloMessage()
+	if err != nil {
+		return err
+	}
+	select {
+	case c.send <- data:
+	default:
+		close(c.send)
+		return fmt.Errorf("client send channel full")
+	}
+	return nil
+}
+
+// BroadcastHello sends the hello message to all connected clients.
+// ponytail: kept for backward compatibility; new clients receive hello on connect.
+func (h *Hub) BroadcastHello() error {
+	data, err := h.helloMessage()
 	if err != nil {
 		return err
 	}

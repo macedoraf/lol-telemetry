@@ -7,13 +7,16 @@ A real-time telemetry SDK and CLI for League of Legends, built in Go. Fully comp
 ### Prerequisites
 * Go 1.22+ installed.
 
-### Running in Mock Mode (Offline Development)
-Test the TUI dashboard instantly without an active game client:
-```bash
-go run cmd/lol-cli/main.go --mock testdata/mocks/allgamedata.json
-```
+### Running locally
+Start the WebSocket daemon first (it reads the LoL Live Client Data API), then connect the TUI:
 
-The CLI starts with a **Feature Menu**. Select `[Rotas do SDK]` to inspect the Live Client Data API routes, or `[Dicas do Jogo]` to view Judge tips and configuration.
+```bash
+# Terminal 1
+go run ./cmd/lol-daemon
+
+# Terminal 2
+go run ./cmd/lol-cli
+```
 
 ### Judge Configuration (Bring Your Own Key)
 The optional LLM Judge is powered by [OpenRouter](https://openrouter.ai) and configured through environment variables:
@@ -27,10 +30,10 @@ Example:
 ```bash
 export OPENROUTER_API_KEY="sk-..."
 export OPENROUTER_MODEL="anthropic/claude-3.5-sonnet"
-go run cmd/lol-cli/main.go
+go run ./cmd/lol-daemon
 ```
 
-When the key is absent, the Judge loop is disabled and the `[Dicas do Jogo]` panel shows the configuration status.
+When the key is absent, the Judge loop is disabled.
 
 ## Examples & Use Cases
 
@@ -142,10 +145,16 @@ You can point the `riotclient` integration tests at it by setting `MOCK_API_URL=
 
 ## Build a Windows Artifact
 
-The CLI can be cross-compiled to a Windows executable (`lol-cli.exe`) on any platform with Go installed.
+The project ships two Windows executables:
+
+- `lol-daemon.exe` — background WebSocket daemon that reads the LoL Live Client Data API.
+- `lol-cli.exe` — interactive TUI / raw-mode client that connects to the daemon.
+
+Both must be present. Running `lol-cli.exe` without `lol-daemon.exe` first will fail with a WebSocket connection error.
 
 ### Manual cross-compilation
 ```bash
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o dist/lol-daemon.exe ./cmd/lol-daemon
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o dist/lol-cli.exe ./cmd/lol-cli
 ```
 
@@ -154,7 +163,7 @@ GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o dist/lol-cli.exe ./cmd/lol-c
 make build-windows
 ```
 
-This creates `dist/lol-cli.exe`. The produced binary is statically linked and does not require CGO.
+This creates `dist/lol-daemon.exe` and `dist/lol-cli.exe`. Both binaries are statically linked and do not require CGO.
 
 ### Verify the artifact
 ```bash
@@ -168,10 +177,10 @@ make clean
 
 ## Releasing
 
-A GitHub Actions workflow automatically builds and releases the Windows artifact.
+A GitHub Actions workflow automatically builds and releases the Windows artifacts.
 
 ### On every push to `main`
-The `.github/workflows/release-windows.yml` workflow runs tests, builds `dist/lol-cli.exe`, creates a lightweight tag (e.g., `main-20260725-abc123`), and publishes a GitHub prerelease with the artifact attached.
+The `.github/workflows/release-windows.yml` workflow runs tests, builds `dist/lol-daemon.exe` and `dist/lol-cli.exe`, creates a lightweight tag (e.g., `main-20260725-abc123`), and publishes a GitHub prerelease with both executables attached.
 
 ### On semantic version tags
 Push a tag following [SemVer](https://semver.org/) to create a stable release:
@@ -180,7 +189,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The workflow uses the tag name as the release title and attaches `dist/lol-cli.exe` as a release asset.
+The workflow uses the tag name as the release title and attaches `dist/lol-daemon.exe` and `dist/lol-cli.exe` as release assets.
 
 ### Pull request CI
-The `.github/workflows/build-windows.yml` workflow runs on every pull request to `main`, ensuring tests pass and the Windows artifact builds successfully.
+The `.github/workflows/build-windows.yml` workflow runs on every pull request to `main`, ensuring tests pass and both Windows artifacts build successfully. Both `lol-daemon.exe` and `lol-cli.exe` are uploaded as separate artifacts.
