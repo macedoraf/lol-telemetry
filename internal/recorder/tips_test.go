@@ -122,6 +122,12 @@ func TestRecorder_TipDropWhenChannelFull(t *testing.T) {
 		t.Fatalf("StartSession: %v", err)
 	}
 
+	// Block the background writer so the channel cannot drain while we flood
+	// it. Without this the loop may consume tips fast enough to keep the
+	// channel empty, making the drop count non-deterministic.
+	r.sessionMu.Lock()
+	defer r.sessionMu.Unlock()
+
 	done := make(chan struct{})
 	go func() {
 		for i := 0; i < chanCapacity+50; i++ {
