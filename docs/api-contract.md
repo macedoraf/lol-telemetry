@@ -163,6 +163,23 @@ Check the log file for the exact error. Common causes:
 - Check `lol-daemon.log` for repeated `LoL API connection failed` messages.
 - Try changing the base URL with `LOL_BASE_URL` or `-lol-url` if your client binds to a different address.
 
+### `connectex: Nenhuma conexão pôde ser feita` / `connectex: No connection could be made`
+
+This is the Windows error for "connection refused". It means nothing is listening on the configured address. Common fixes:
+
+1. **Start a League of Legends match.** The Live Client Data API only exists while you are in-game.
+2. **Check the port.** The default is `2999`. If your LoL client is configured differently, set the correct URL:
+   ```powershell
+   $env:LOL_BASE_URL="https://localhost:2999/liveclientdata"
+   ./lol-daemon.exe
+   ```
+3. **Firewall/antivirus.** Make sure Windows Defender or third-party antivirus is not blocking local HTTPS traffic on port 2999.
+4. **Try localhost.** Some Windows installs resolve `127.0.0.1` differently. The daemon now automatically falls back to `localhost` if `127.0.0.1` fails at startup.
+5. **Run with debug logs** to see the exact request:
+   ```powershell
+   ./lol-daemon.exe -check -debug
+   ```
+
 ---
 
-*Gerado por OpenCode Agent | Tokens estimados: ~1.600 | Ciclos: 3*
+*Gerado por OpenCode Agent | Tokens estimados: ~1.800 | Ciclos: 4*

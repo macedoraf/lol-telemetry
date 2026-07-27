@@ -16,6 +16,8 @@ import (
 	"lol-telemetry/pkg/riotclient"
 )
 
+const defaultBaseURL = "https://127.0.0.1:2999/liveclientdata"
+
 // Daemon runs the background service that polls the Live Client Data API and
 // broadcasts game state, events, and judge advice over WebSocket.
 type Daemon struct {
@@ -42,8 +44,30 @@ type DaemonConfig struct {
 
 // NewDaemon creates a new daemon instance.
 func NewDaemon(cfg DaemonConfig) *Daemon {
-	client := riotclient.NewClientWithURL(cfg.BaseURL)
+	baseURL := cfg.BaseURL
+	if baseURL == "" {
+		baseURL = defaultBaseURL
+	}
+	client := riotclient.NewClientWithURL(baseURL)
 	client.Debug = cfg.Debug
+
+	if baseURL == defaultBaseURL {
+		// Some Windows installs bind the API on localhost instead of 127.0.0.1.
+		// Try both once at startup.
+		if err := client.CheckConnection(); err != nil {
+			log.Printf("default LoL API address failed, trying localhost: %v", err)
+			alt := riotclient.NewClientWithURL("https://localhost:2999/liveclientdata")
+			alt.Debug = cfg.Debug
+			if altErr := alt.CheckConnection(); altErr == nil {
+				client = alt
+				baseURL = "https://localhost:2999/liveclientdata"
+				log.Printf("using localhost LoL API address")
+			} else {
+				log.Printf("localhost LoL API address also failed: %v", altErr)
+			}
+		}
+	}
+
 	hub := NewHub()
 
 	var j *judge.Judge
@@ -133,6 +157,7 @@ func (d *Daemon) tick(ctx context.Context) {
 	if err != nil {
 		if d.connected || d.lastErr != err.Error() {
 			log.Printf("LoL API connection failed: %v", err)
+			log.Printf("ensure League of Legends is running and you are in an active game; base URL=%s", d.client.BaseURL)
 			d.lastErr = err.Error()
 		}
 		d.connected = false
