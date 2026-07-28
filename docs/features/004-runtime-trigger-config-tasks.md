@@ -63,7 +63,7 @@ Hooks que implementam `Configurable`: `Periodic5MinHook{IntervalSeconds}` (defau
 
 - **RuntimeConfig** (`pkg/service/runtime_config.go`, novo): struct com `sync.RWMutex` segurando o último `ConfigView` aplicado; handlers HTTP leem dele, e o `apply` propaga para registry/builder/orchestrator. Fonte da verdade inicial = `DaemonConfig` (env/flags).
 
-- **CLI** (tab Config): HTTP client `internal/tui/configclient.go` derivando endereço do WS (`ws://host:port/ws` → `http://host:port`). GET ao conectar; keys: `space` toggle hook, `e` edita param selecionado (textinput do bubbles, já no go.mod), `L` cicla idioma en→pt-BR→es (PATCH). Erros 400 exibidos na status bar.
+- **CLI** (tab Config): HTTP client `internal/tui/configclient.go` derivando endereço do WS (`ws://host:port/ws` → `http://host:port`). GET ao conectar; comandos com `/` digitados no input: `/lang` ou `/language` cicla idioma en→pt-BR→es (PATCH), `/prompt` abre `$EDITOR` para editar o prompt. Navegação de tabs continua com setas/h/l quando o input está vazio. Erros 400 exibidos na status bar.
 
 ## 4. Tasks
 
@@ -94,7 +94,7 @@ Hooks que implementam `Configurable`: `Periodic5MinHook{IntervalSeconds}` (defau
 
 ### T6 — CLI: client HTTP + tab Config
 - **Arquivos:** `internal/tui/configclient.go` (novo), `internal/tui/config.go` (novo, estado da tab), `internal/tui/model.go`, `internal/tui/messages.go`
-- `TabConfig` (tabCount 5); mensagens `ConfigLoadedMsg`, `ConfigSavedMsg`, `ConfigErrorMsg`; render: tabela hook | enabled | params; footer com keys; edição via `textinput`.
+- `TabConfig` (tabCount 5); mensagens `ConfigLoadedMsg`, `ConfigSavedMsg`, `ConfigErrorMsg`; render: tabela hook | enabled | params; input de comandos com `/` (`/lang`, `/language`, `/prompt`) via `textinput` do bubbles; footer com ajuda.
 - **Testes:** `model_test.go` — navegação para a tab; toggle emite PATCH (client mockado via interface `ConfigClient`); erro 400 aparece na status bar.
 
 ### T7 — Docs
@@ -106,7 +106,7 @@ Hooks que implementam `Configurable`: `Periodic5MinHook{IntervalSeconds}` (defau
 1. `GET /api/config` retorna todos os 8 hooks com enabled/params/schema e o idioma atual.
 2. `PATCH` desabilitando `player-death` → dicas de morte param imediatamente, sem restart.
 3. `PATCH` com `intervalSeconds=120` no `periodic-5min` → próximo disparo ocorre na marca de 2min seguinte, sem disparo retroativo.
-4. Idioma trocado via `PATCH` (ou tecla `L` no CLI) reflete na próxima dica.
+4. Idioma trocado via `PATCH` (ou comando `/lang` no CLI) reflete na próxima dica.
 5. Param inválido → 400 com mensagem clara; config anterior preservada.
 6. Defaults na subida = comportamento atual (todos hooks habilitados, params atuais).
 7. `go test -race ./...` limpo.

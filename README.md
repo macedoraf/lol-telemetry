@@ -66,7 +66,7 @@ Rules:
 * `{"judge":{"prompt":""}}` restores the default prompt.
 * The language directive from `JUDGE_LANGUAGE` is always appended to the effective prompt.
 
-From the test TUI (`go run ./cmd/lol-cli`), open the **Config** tab and press `p` to edit the prompt in `$EDITOR`.
+From the test TUI (`go run ./cmd/lol-cli`), open the **Config** tab and type `/prompt` followed by Enter to edit the prompt in `$EDITOR`.
 
 ### Telemetry Recording
 

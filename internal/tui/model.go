@@ -65,31 +65,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "esc", "ctrl+c":
+		keyStr := msg.String()
+		switch keyStr {
+		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "right", "l", "tab":
-			m.activeTab = (m.activeTab + 1) % tabCount
-		case "left", "h":
-			m.activeTab = (m.activeTab - 1 + tabCount) % tabCount
-		case "L":
-			if m.activeTab == TabConfig && !m.config.loading {
-				next := nextLanguage(m.config.view.Judge.Language)
-				patch := service.ConfigPatch{
-					Judge: &service.JudgeConfigPatch{Language: &next},
-				}
-				return m, patchConfigCmd(m.configClient, patch)
+		case "esc":
+			if m.activeTab == TabConfig && m.config.input.Value() != "" {
+				m.config.input.Reset()
+				return m, nil
 			}
-		case "p":
-			if m.activeTab == TabConfig && !m.config.loading {
-				cmd, err := editPromptCmd(m.config.view.Judge.EffectivePrompt)
-				if err != nil {
-					m.config.SetError(err.Error())
-					return m, nil
-				}
-				return m, cmd
+			return m, tea.Quit
+		}
+
+		// When on the Config tab the input is focused. If the input is empty,
+		// arrow keys and h/l still navigate tabs; otherwise they edit the command.
+		if m.activeTab != TabConfig || m.config.input.Value() == "" {
+			switch keyStr {
+			case "right", "l", "tab":
+				m.activeTab = (m.activeTab + 1) % tabCount
+				return m, nil
+			case "left", "h":
+				m.activeTab = (m.activeTab - 1 + tabCount) % tabCount
+				return m, nil
 			}
 		}
+
+		if m.activeTab == TabConfig {
+			if keyStr == "enter" {
+				return m.handleConfigCommand()
+			}
+			var cmd tea.Cmd
+			m.config.input, cmd = m.config.input.Update(msg)
+			return m, cmd
+		}
+
 		return m, nil
 
 	case ConnectedMsg:
@@ -208,6 +217,52 @@ func (m Model) renderTabs() string {
 		}
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Left, parts...)
+}
+
+// handleConfigCommand parses a command typed in the Config tab input and
+// returns the corresponding action.
+func (m Model) handleConfigCommand() (Model, tea.Cmd) {
+	cmdStr := strings.TrimSpace(m.config.input.Value())
+	m.config.input.Reset()
+	if cmdStr == "" {
+		return m, nil
+	}
+	if !strings.HasPrefix(cmdStr, "/") {
+		m.config.SetStatus("commands start with /")
+		return m, nil
+	}
+
+	parts := strings.Fields(cmdStr[1:])
+	if len(parts) == 0 {
+		return m, nil
+	}
+	switch parts[0] {
+	case "help":
+		m.config.SetStatus("/lang, /language, /prompt")
+		return m, nil
+	case "lang", "language":
+		if m.config.loading {
+			return m, nil
+		}
+		next := nextLanguage(m.config.view.Judge.Language)
+		patch := service.ConfigPatch{
+			Judge: &service.JudgeConfigPatch{Language: &next},
+		}
+		return m, patchConfigCmd(m.configClient, patch)
+	case "prompt":
+		if m.config.loading {
+			return m, nil
+		}
+		cmd, err := editPromptCmd(m.config.view.Judge.EffectivePrompt)
+		if err != nil {
+			m.config.SetError(err.Error())
+			return m, nil
+		}
+		return m, cmd
+	default:
+		m.config.SetStatus(fmt.Sprintf("unknown command: %s", parts[0]))
+		return m, nil
+	}
 }
 
 // loadConfigCmd fetches the runtime config and sends it to the model.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 
 	"lol-telemetry/pkg/service"
@@ -12,16 +13,26 @@ import (
 // ConfigState holds a snapshot of the runtime config for the Config tab.
 type ConfigState struct {
 	view    service.ConfigView
+	status  string
 	err     string
 	loading bool
+	input   textinput.Model
 }
 
 func newConfigState() ConfigState {
-	return ConfigState{loading: true}
+	ti := textinput.New()
+	ti.Placeholder = "/help"
+	ti.Prompt = "> "
+	ti.Focus()
+	ti.CharLimit = 156
+	ti.Width = 60
+	ti.KeyMap.AcceptSuggestion.SetEnabled(false)
+	return ConfigState{loading: true, input: ti}
 }
 
 func (s *ConfigState) Update(v service.ConfigView) {
 	s.view = v
+	s.status = ""
 	s.err = ""
 	s.loading = false
 }
@@ -29,6 +40,10 @@ func (s *ConfigState) Update(v service.ConfigView) {
 func (s *ConfigState) SetError(err string) {
 	s.err = err
 	s.loading = false
+}
+
+func (s *ConfigState) SetStatus(status string) {
+	s.status = status
 }
 
 func (s *ConfigState) View(width, height int) string {
@@ -71,7 +86,12 @@ func (s *ConfigState) View(width, height int) string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString("\n" + helpStyle.Render("space toggle • l cycle language • p edit prompt • q quit"))
+	b.WriteString("\n")
+	if s.status != "" {
+		b.WriteString(helpStyle.Render(s.status) + "\n")
+	}
+	b.WriteString(s.input.View())
+	b.WriteString("\n" + helpStyle.Render("Type /help for commands • esc clear • q quit"))
 
 	return b.String()
 }
