@@ -139,6 +139,65 @@ type GameSnapshot struct {
 	Events     []EventSnapshot
 }
 
+// FeatureVector is a time-series-derived view of the match state.
+// It is additive to the existing JudgeRequest fields and only appears when
+// the feature pipeline is enabled.
+type FeatureVector struct {
+	GameMinute int            `json:"gameMinute"`
+	WindowSec  float64        `json:"windowSec"`
+	Samples    int            `json:"samples"`
+	Player     PlayerFeatures `json:"player"`
+	Team       TeamFeatures   `json:"allyTeam"`
+	Enemy      TeamFeatures   `json:"enemyTeam"`
+	Matchup    *MatchupFeatures `json:"matchup,omitempty"`
+}
+
+// PlayerFeatures holds derived features for the active player.
+type PlayerFeatures struct {
+	GoldPerMin      float64 `json:"goldPerMin"`
+	XPPerMin        float64 `json:"xpPerMin"`
+	GoldDelta1m     float64 `json:"goldDelta1m"`
+	GoldDelta5m     float64 `json:"goldDelta5m"`
+	XPDelta1m       float64 `json:"xpDelta1m"`
+	XPDelta5m       float64 `json:"xpDelta5m"`
+	Level           int     `json:"level"`
+	ItemsCompleted  int     `json:"itemsCompleted"`
+	ItemsGold       int     `json:"itemsGold"`
+	GoldSpike1m     bool    `json:"goldSpike1m"`
+}
+
+// TeamFeatures holds derived features for an entire team.
+type TeamFeatures struct {
+	ItemCompletions1m int            `json:"itemCompletions1m"`
+	LevelUps1m        int            `json:"levelUps1m"`
+	AvgXPPerMin       float64        `json:"avgXpPerMin"`
+	Spikes            []string       `json:"spikes,omitempty"`
+	Objectives        ObjectiveCount `json:"objectives"`
+	Kills1m           int            `json:"kills1m"`
+	DeadNow           int            `json:"deadNow"`
+	MaxRespawnSec     float64        `json:"maxRespawnSec,omitempty"`
+}
+
+// ObjectiveCount aggregates objective ground truth derived from enriched events.
+type ObjectiveCount struct {
+	Dragons   int  `json:"dragons"`
+	Barons    int  `json:"barons"`
+	Heralds   int  `json:"heralds"`
+	Towers    int  `json:"towers"`
+	Inhibs    int  `json:"inhibs"`
+	Steals    int  `json:"steals,omitempty"`
+	SoulPoint bool `json:"soulPoint,omitempty"`
+}
+
+// MatchupFeatures holds lane-matchup diffs when an opponent can be identified.
+type MatchupFeatures struct {
+	LevelDiff        int     `json:"levelDiff,omitempty"`
+	CSDiff           int     `json:"csDiff,omitempty"`
+	ItemDiff         int     `json:"itemDiff,omitempty"`
+	KillDiff         int     `json:"killDiff,omitempty"`
+	OpponentXPPerMin float64 `json:"opponentXpPerMin,omitempty"`
+}
+
 // JudgeRequest is the payload delivered to the Judge for evaluation.
 type JudgeRequest struct {
 	GameMinute   int
@@ -151,6 +210,7 @@ type JudgeRequest struct {
 	Question     string
 	SystemPrompt string
 	Events       []EventSnapshot
+	Features     *FeatureVector `json:"features,omitempty"`
 }
 
 // JudgeResponse carries the Judge's actionable advice and reasoning.

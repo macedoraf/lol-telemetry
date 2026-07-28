@@ -38,6 +38,7 @@ The optional LLM Judge is powered by [OpenRouter](https://openrouter.ai) and con
 | `OPENROUTER_MODEL` | No | Model to use. Defaults to `openai/gpt-4o-mini`. |
 | `JUDGE_LANGUAGE` | No | Language for Judge advice tips. One of `en`, `pt-BR`, `es`. Defaults to `en`. |
 | `LOL_RECORD_ENABLED` | No | Persist raw Live Client Data API snapshots to disk as append-only JSONL. Defaults to `false`. |
+| `LOL_FEATURES_ENABLED` | No | Compute time-series features (gold/min, XP/min, objectives, death timers, matchup diffs) and send them to the Judge. Writes `features.jsonl` when recording is enabled. Defaults to `false`. |
 | `LOL_RECORDINGS_DIR` | No | Directory for recorded sessions. Defaults to `./recordings`. |
 
 Example:

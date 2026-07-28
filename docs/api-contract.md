@@ -128,6 +128,7 @@ To enable offline development, unit testing, and TDD without requiring an active
 | `LOL_DAEMON_LOG` | — | Override daemon log path |
 | `LOL_RECORD_ENABLED` | `false` | Persist raw telemetry snapshots to disk |
 | `LOL_RECORDINGS_DIR` | `./recordings` | Base directory for recorded sessions |
+| `LOL_FEATURES_ENABLED` | `false` | Compute and send time-series features to the Judge; writes `features.jsonl` when recording is enabled |
 | `EDITOR` | — | External editor for the TUI prompt editor |
 
 ### PATCH judge prompt
@@ -158,7 +159,13 @@ When `LOL_RECORD_ENABLED=true`, each game session is written to `<LOL_RECORDINGS
 When `LOL_RECORD_ENABLED=true` and a Judge hook fires, a line is appended to `<sessionID>/tips.jsonl`:
 
 ```json
-{"v":1,"type":"tip","ts":1750000001234,"session":"20260727-143012-a1b2c3","gameTime":612.4,"gameMinute":10,"hookName":"periodic-5min","question":"Evaluate the current macro state...","advice":"...","reasoning":"..."}
+{"v":1,"type":"tip","ts":17500000001234,"session":"20260727-143012-a1b2c3","gameTime":612.4,"gameMinute":10,"hookName":"periodic-5min","question":"Evaluate the current macro state...","advice":"...","reasoning":"..."}
+```
+
+When both `LOL_RECORD_ENABLED=true` and `LOL_FEATURES_ENABLED=true`, a line is appended to `<sessionID>/features.jsonl` on every Judge trigger and at every full 60-second game mark:
+
+```json
+{"v":1,"type":"features","ts":17500000001234,"session":"20260727-143012-a1b2c3","gameTime":612.4,"gameMinute":10,"features":{"gameMinute":10,"windowSec":60,"samples":60,"player":{...},"allyTeam":{...},"enemyTeam":{...},"matchup":{...}}}
 ```
 
 Correlation with telemetry is by `(session, gameTime)`:

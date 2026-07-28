@@ -17,7 +17,7 @@
 | **005-telemetry-recording** | Telemetry Recording | `IMPLEMENTED` | Opt-in async JSONL recording of raw Live Client Data API snapshots per game session; never blocks the poll loop. |
 | **006-runtime-prompt-editing** | Runtime Judge Prompt Editing | `IMPLEMENTED` | PATCH judge system prompt at runtime via `/api/config`; view/edit from the CLI via `$EDITOR`. |
 | **007-judge-tip-persistence** | Judge Tip Persistence & Correlation | `IMPLEMENTED` | Record Judge tips to `tips.jsonl` correlated with telemetry via `(session, gameTime)`. |
-| **008-timeseries-feature-engineering** | Time-Series Feature Engineering for Judge | `TASKS_DEFINED` | Transform pipeline over raw API data: gold/min, XP/min (level-derived), team/enemy spikes, matchup diffs; additive `Features` in JudgeRequest; `features.jsonl` recording. |
+| **008-timeseries-feature-engineering** | Time-Series Feature Engineering for Judge | `IMPLEMENTED` | Transform pipeline over raw API data: gold/min, XP/min (level-derived), team/enemy spikes, objectives/death timers via enriched events, matchup diffs; additive `Features` in JudgeRequest; `features.jsonl` recording. |
 
 ---
 

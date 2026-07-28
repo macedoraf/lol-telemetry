@@ -26,18 +26,23 @@ type Recorder struct {
 	dir       string
 	ch        chan TelemetryRecord
 	tipCh     chan TipRecord
+	featureCh chan FeatureRecord
 	stop      chan struct{}
 	closeOnce sync.Once
 	wg        sync.WaitGroup
 	sessionMu sync.Mutex
-	session   *sessionWriter
-	tipFile   *os.File
-	tipWriter *bufio.Writer
+	session       *sessionWriter
+	tipFile       *os.File
+	tipWriter     *bufio.Writer
+	featureFile   *os.File
+	featureWriter *bufio.Writer
 
-	written     int64
-	dropped     int64
-	tipWritten  int64
-	tipDropped  int64
+	written        int64
+	dropped        int64
+	tipWritten     int64
+	tipDropped     int64
+	featureWritten int64
+	featureDropped int64
 }
 
 // sessionWriter holds the currently open file for the active session.
@@ -54,10 +59,11 @@ func New(dir string) (*Recorder, error) {
 	}
 
 	r := &Recorder{
-		dir:   dir,
-		ch:    make(chan TelemetryRecord, chanCapacity),
-		tipCh: make(chan TipRecord, chanCapacity),
-		stop:  make(chan struct{}),
+		dir:       dir,
+		ch:        make(chan TelemetryRecord, chanCapacity),
+		tipCh:     make(chan TipRecord, chanCapacity),
+		featureCh: make(chan FeatureRecord, chanCapacity),
+		stop:      make(chan struct{}),
 	}
 	r.wg.Add(1)
 	go r.loop()
@@ -168,10 +174,15 @@ func (r *Recorder) loop() {
 			r.write(rec)
 		case tip := <-r.tipCh:
 			r.writeTip(tip)
+		case feat := <-r.featureCh:
+			r.writeFeature(feat)
 		case <-flushTicker.C:
 			r.sessionMu.Lock()
 			if r.tipWriter != nil {
 				_ = r.tipWriter.Flush()
+			}
+			if r.featureWriter != nil {
+				_ = r.featureWriter.Flush()
 			}
 			if r.session != nil {
 				_ = r.session.writer.Flush()
@@ -189,10 +200,15 @@ func (r *Recorder) drainAndFlush() {
 			r.write(rec)
 		case tip := <-r.tipCh:
 			r.writeTip(tip)
+		case feat := <-r.featureCh:
+			r.writeFeature(feat)
 		default:
 			r.sessionMu.Lock()
 			if r.tipWriter != nil {
 				_ = r.tipWriter.Flush()
+			}
+			if r.featureWriter != nil {
+				_ = r.featureWriter.Flush()
 			}
 			if r.session != nil {
 				_ = r.session.writer.Flush()
@@ -238,14 +254,22 @@ func (r *Recorder) closeSessionLocked() {
 	}
 	_ = r.session.writer.Flush()
 	_ = r.session.file.Close()
-	// Close tips writer tied to this session.
+	// Close tip and feature writers tied to this session.
 	if r.tipWriter != nil {
 		_ = r.tipWriter.Flush()
 	}
 	if r.tipFile != nil {
 		_ = r.tipFile.Close()
 	}
+	if r.featureWriter != nil {
+		_ = r.featureWriter.Flush()
+	}
+	if r.featureFile != nil {
+		_ = r.featureFile.Close()
+	}
 	r.session = nil
 	r.tipWriter = nil
 	r.tipFile = nil
+	r.featureWriter = nil
+	r.featureFile = nil
 }

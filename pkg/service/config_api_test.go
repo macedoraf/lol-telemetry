@@ -19,7 +19,7 @@ func setupRuntimeConfig() *RuntimeConfig {
 	reg := hooks.NewRegistry()
 	reg.Register(&hooks.Periodic5MinHook{})
 	builder := payload.NewBuilder("en")
-	orch := orchestrator.NewOrchestrator(client, reg, builder, nil)
+	orch := orchestrator.NewOrchestrator(client, reg, builder, nil, nil, nil)
 	return NewRuntimeConfig("en", reg, builder, orch)
 }
 

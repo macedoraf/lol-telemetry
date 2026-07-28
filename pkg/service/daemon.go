@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"lol-telemetry/internal/features"
 	"lol-telemetry/internal/hooks"
 	"lol-telemetry/internal/judge"
 	"lol-telemetry/internal/judge/openrouter"
@@ -32,24 +33,28 @@ type Daemon struct {
 	runtime      *RuntimeConfig
 	recorder     *recorder.Recorder
 	sessionMgr   recorder.SessionManager
+	tracker      *features.Tracker
+	pipeline     *features.Pipeline
 	pollInterval time.Duration
 	lastEvents   int
+	lastGameTime float64
 	connected    bool
 	lastErr      string
 }
 
 // DaemonConfig holds the runtime configuration for the daemon.
 type DaemonConfig struct {
-	Port            string
-	BaseURL         string
-	PollInterval    time.Duration
-	JudgeEnabled    bool
-	OpenRouterKey   string
-	OpenRouterModel string
-	Debug           bool
-	JudgeLanguage   string // en, pt-BR, es
-	RecordEnabled   bool
-	RecordingsDir   string
+	Port             string
+	BaseURL          string
+	PollInterval     time.Duration
+	JudgeEnabled     bool
+	OpenRouterKey    string
+	OpenRouterModel  string
+	Debug            bool
+	JudgeLanguage    string // en, pt-BR, es
+	RecordEnabled    bool
+	RecordingsDir    string
+	FeaturesEnabled  bool
 }
 
 // NewDaemon creates a new daemon instance.
@@ -101,7 +106,15 @@ func NewDaemon(cfg DaemonConfig) *Daemon {
 		log.Printf("warning: invalid JUDGE_LANGUAGE=%q, using %q", cfg.JudgeLanguage, normLang)
 	}
 	builder := payload.NewBuilder(normLang)
-	orch := orchestrator.NewOrchestrator(client, reg, builder, j)
+
+	var tracker *features.Tracker
+	var pipeline *features.Pipeline
+	if cfg.FeaturesEnabled {
+		tracker = features.NewTracker()
+		pipeline = features.NewPipeline()
+	}
+
+	orch := orchestrator.NewOrchestrator(client, reg, builder, j, pipeline, tracker)
 	runtime := NewRuntimeConfig(normLang, reg, builder, orch)
 
 	d := &Daemon{
@@ -112,6 +125,8 @@ func NewDaemon(cfg DaemonConfig) *Daemon {
 		builder:      builder,
 		reg:          reg,
 		runtime:      runtime,
+		tracker:      tracker,
+		pipeline:     pipeline,
 		pollInterval: cfg.PollInterval,
 		lastEvents:   -1,
 	}
@@ -212,17 +227,33 @@ func (d *Daemon) tick(ctx context.Context) {
 		if d.recorder != nil {
 			d.observeRecording(0, false)
 		}
+		if d.tracker != nil {
+			d.tracker.Reset()
+			d.lastGameTime = 0
+		}
 		return
 	}
 
+	gameTime := data.GameData.GameTime
+
+	// Minimal session boundary detector for features when recording is off.
+	if d.tracker != nil && gameTime < d.lastGameTime {
+		d.tracker.Reset()
+		d.lastGameTime = 0
+	}
+
 	if !d.connected {
-		log.Printf("LoL API connected: gameTime=%.1f mode=%s", data.GameData.GameTime, data.GameData.GameMode)
+		log.Printf("LoL API connected: gameTime=%.1f mode=%s", gameTime, data.GameData.GameMode)
 		d.connected = true
 		d.lastErr = ""
 	}
 
+	if d.tracker != nil {
+		d.tracker.Add(data)
+	}
+
 	if d.recorder != nil {
-		d.observeRecording(data.GameData.GameTime, true)
+		d.observeRecording(gameTime, true)
 		d.recordSnapshot(data)
 	}
 
@@ -238,8 +269,10 @@ func (d *Daemon) tick(ctx context.Context) {
 
 	d.broadcastEvents(data)
 
+	var responses []orchestrator.Result
 	if d.config.JudgeEnabled {
-		responses, err := d.orch.Tick(ctx)
+		var err error
+		responses, err = d.orch.Tick(ctx)
 		if err != nil {
 			log.Printf("orchestrator tick error: %v", err)
 			return
@@ -268,10 +301,45 @@ func (d *Daemon) tick(ctx context.Context) {
 			}
 		}
 	}
+
+	if d.pipeline != nil && d.recorder != nil {
+		crossedMinute := int(gameTime/60) > int(d.lastGameTime/60)
+		if len(responses) > 0 || crossedMinute {
+			d.recordFeatures(gameTime)
+		}
+	}
+
+	d.lastGameTime = gameTime
+}
+
+func (d *Daemon) recordFeatures(gameTime float64) {
+	if d.pipeline == nil || d.tracker == nil || d.recorder == nil {
+		return
+	}
+	sid := d.recorder.SessionID()
+	if sid == "" {
+		return
+	}
+	fv := d.pipeline.Compute(d.tracker.Window())
+	d.recorder.RecordFeature(recorder.FeatureRecord{
+		Version:    1,
+		Type:       "features",
+		Ts:         time.Now().UnixMilli(),
+		Session:    sid,
+		GameTime:   gameTime,
+		GameMinute: fv.GameMinute,
+		Features:   fv,
+	})
 }
 
 func (d *Daemon) observeRecording(gameTime float64, apiOK bool) {
 	id, started, ended := d.sessionMgr.Observe(gameTime, apiOK)
+	if started || ended {
+		if d.tracker != nil {
+			d.tracker.Reset()
+			d.lastGameTime = 0
+		}
+	}
 	if started && ended {
 		prev := d.recorder.SessionID()
 		if err := d.recorder.StartSession(id); err != nil {

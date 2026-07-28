@@ -41,7 +41,7 @@ func TestIntegration_EndToEnd_FiresAtFiveMinuteMark(t *testing.T) {
 
 	judge := &mockJudge{responses: []types.JudgeResponse{{Advice: "Secure dragon and push mid."}}}
 	builder := payload.NewBuilder("en")
-	orch := NewOrchestrator(client, reg, builder, judge)
+	orch := NewOrchestrator(client, reg, builder, judge, nil, nil)
 
 	_, _ = orch.Tick(context.Background())
 	resps, err := orch.Tick(context.Background())
@@ -78,7 +78,7 @@ func TestIntegration_EndToEnd_LateStartFiresAtNextMark(t *testing.T) {
 
 	judge := &mockJudge{responses: []types.JudgeResponse{{Advice: "Late start advice."}}}
 	builder := payload.NewBuilder("en")
-	orch := NewOrchestrator(client, reg, builder, judge)
+	orch := NewOrchestrator(client, reg, builder, judge, nil, nil)
 
 	// First tick at 10:10 should NOT fire because 10:00 mark is in the past
 	// relative to start and no previous mark was recorded.
@@ -108,7 +108,7 @@ func TestIntegration_EndToEnd_APIErrorDoesNotCrash(t *testing.T) {
 
 	judge := &mockJudge{}
 	builder := payload.NewBuilder("en")
-	orch := NewOrchestrator(client, reg, builder, judge)
+	orch := NewOrchestrator(client, reg, builder, judge, nil, nil)
 
 	_, err := orch.Tick(context.Background())
 	if err == nil {

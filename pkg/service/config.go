@@ -54,16 +54,19 @@ func LoadDaemonConfigFromEnv() DaemonConfig {
 		recordingsDir = "./recordings"
 	}
 
+	featuresEnabled := os.Getenv("LOL_FEATURES_ENABLED") == "true" || os.Getenv("LOL_FEATURES_ENABLED") == "1"
+
 	return DaemonConfig{
-		Port:            port,
-		BaseURL:         baseURL,
-		PollInterval:    interval,
-		JudgeEnabled:    judgeEnabled,
-		OpenRouterKey:   apiKey,
-		OpenRouterModel: model,
-		Debug:           debug,
-		JudgeLanguage:   judgeLanguage,
-		RecordEnabled:   recordEnabled,
-		RecordingsDir:   recordingsDir,
+		Port:             port,
+		BaseURL:          baseURL,
+		PollInterval:     interval,
+		JudgeEnabled:     judgeEnabled,
+		OpenRouterKey:    apiKey,
+		OpenRouterModel:  model,
+		Debug:            debug,
+		JudgeLanguage:    judgeLanguage,
+		RecordEnabled:    recordEnabled,
+		RecordingsDir:    recordingsDir,
+		FeaturesEnabled:  featuresEnabled,
 	}
 }

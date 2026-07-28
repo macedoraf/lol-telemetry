@@ -63,8 +63,7 @@ func (b *Builder) Build(data riotclient.AllGameData, question string) (types.Jud
 		return types.JudgeRequest{}, fmt.Errorf("active player not found")
 	}
 
-	opponent := riotclient.FindOpponent(data, active.Position, active.Team)
-	identified := opponent.SummonerName != ""
+	opponent, identified := riotclient.FindOpponent(data, active.Position, active.Team)
 
 	req := types.JudgeRequest{
 		GameMinute: int(gameTime) / 60,

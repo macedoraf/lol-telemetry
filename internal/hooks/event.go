@@ -154,12 +154,12 @@ func (EnemyGoldSpikeHook) ShouldFire(ctx types.HookContext) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf("active player not found")
 	}
-	opponent := riotclient.FindOpponent(ctx.Data, active.Position, active.Team)
-	if opponent.SummonerName == "" {
+	opponent, ok := riotclient.FindOpponent(ctx.Data, active.Position, active.Team)
+	if !ok {
 		return false, nil
 	}
-	prevOpponent := riotclient.FindOpponent(ctx.PrevData, active.Position, active.Team)
-	if prevOpponent.SummonerName == "" {
+	prevOpponent, ok := riotclient.FindOpponent(ctx.PrevData, active.Position, active.Team)
+	if !ok {
 		return false, nil
 	}
 	return riotclient.ItemCount(opponent.Items) > riotclient.ItemCount(prevOpponent.Items) || opponent.Level > prevOpponent.Level, nil

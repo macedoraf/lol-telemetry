@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"lol-telemetry/internal/features"
 	"lol-telemetry/internal/hooks"
 	"lol-telemetry/internal/judge/payload"
 	"lol-telemetry/internal/types"
@@ -30,10 +31,12 @@ type mockJudge struct {
 	responses []types.JudgeResponse
 	err       error
 	calls     int
+	lastReq   types.JudgeRequest
 }
 
 func (m *mockJudge) Evaluate(ctx context.Context, req types.JudgeRequest) (types.JudgeResponse, error) {
 	m.calls++
+	m.lastReq = req
 	if m.calls <= len(m.responses) {
 		return m.responses[m.calls-1], m.err
 	}
@@ -48,7 +51,7 @@ func TestOrchestrator_Tick_FiresAtFiveMinuteMark(t *testing.T) {
 	reg.Register(&hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall and buy."}}}
 	b := payload.NewBuilder("en")
-	orch := NewOrchestrator(client, reg, b, j)
+	orch := NewOrchestrator(client, reg, b, j, nil, nil)
 
 	// First tick establishes baseline; no trigger yet.
 	_, _ = orch.Tick(context.Background())
@@ -81,9 +84,9 @@ func TestOrchestrator_Tick_DoesNotDuplicate(t *testing.T) {
 	client := newTestClient(&data, &err)
 	reg := hooks.NewRegistry()
 	reg.Register(&hooks.Periodic5MinHook{})
-	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall and buy."}}}
+	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall."}, {Advice: "Push."}}}
 	b := payload.NewBuilder("en")
-	orch := NewOrchestrator(client, reg, b, j)
+	orch := NewOrchestrator(client, reg, b, j, nil, nil)
 
 	_, _ = orch.Tick(context.Background())
 	data = gameAt(600)
@@ -110,7 +113,7 @@ func TestOrchestrator_Tick_ResetsWhenGameEnds(t *testing.T) {
 	reg.Register(&hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall."}, {Advice: "Push."}}}
 	b := payload.NewBuilder("en")
-	orch := NewOrchestrator(client, reg, b, j)
+	orch := NewOrchestrator(client, reg, b, j, nil, nil)
 
 	_, _ = orch.Tick(context.Background())
 	data = gameAt(600)
@@ -142,7 +145,7 @@ func TestOrchestrator_Tick_APIErrorResets(t *testing.T) {
 	reg.Register(&hooks.Periodic5MinHook{})
 	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall."}, {Advice: "Push."}}}
 	b := payload.NewBuilder("en")
-	orch := NewOrchestrator(client, reg, b, j)
+	orch := NewOrchestrator(client, reg, b, j, nil, nil)
 
 	_, _ = orch.Tick(context.Background())
 	data = gameAt(600)
@@ -167,6 +170,86 @@ func TestOrchestrator_Tick_APIErrorResets(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_Tick_PipelineAddsFeaturesAndObjectives(t *testing.T) {
+	data := gameAt(600)
+	data.Events.Events = append(data.Events.Events, riotclient.Event{
+		EventID:    1,
+		EventName:  "DragonKill",
+		EventTime:  312,
+		DragonType: "Infernal",
+		Stolen:     "True",
+		KillerName: "EnemyAhri",
+	})
+	data.AllPlayers = append(data.AllPlayers, riotclient.AllPlayer{
+		SummonerName: "EnemyAhri",
+		ChampionName: "Ahri",
+		Position:     "MIDDLE",
+		Team:         "CHAOS",
+		Scores:       riotclient.PlayerScores{Kills: 3, Deaths: 1, Assists: 2, CreepScore: 95},
+		Items: []riotclient.Item{
+			{ItemID: 3802, Consumable: false, Price: 1100},
+		},
+	})
+
+	var err error
+	client := newTestClient(&data, &err)
+	reg := hooks.NewRegistry()
+	reg.Register(&hooks.Periodic5MinHook{})
+	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Push."}}}
+	b := payload.NewBuilder("en")
+	tracker := features.NewTracker()
+	tracker.Add(data)
+	orch := NewOrchestrator(client, reg, b, j, features.NewPipeline(), tracker)
+
+	// Baseline at 300, then fire at 600.
+	data.GameData.GameTime = 300
+	_, _ = orch.Tick(context.Background())
+	data.GameData.GameTime = 600
+	resps, err := orch.Tick(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resps) != 1 {
+		t.Fatalf("expected 1 response, got %d", len(resps))
+	}
+	if j.lastReq.Features == nil {
+		t.Fatal("expected Features to be populated")
+	}
+	if j.lastReq.Objectives.Chaos.Dragons != 1 {
+		t.Errorf("legacy Objectives Chaos Dragons = %d, want 1", j.lastReq.Objectives.Chaos.Dragons)
+	}
+	if j.lastReq.Objectives.Order.Dragons != 0 {
+		t.Errorf("legacy Objectives Order Dragons = %d, want 0", j.lastReq.Objectives.Order.Dragons)
+	}
+	if j.lastReq.Features.Enemy.Objectives.Steals != 1 {
+		t.Errorf("feature enemy steals = %d, want 1", j.lastReq.Features.Enemy.Objectives.Steals)
+	}
+}
+
+func TestOrchestrator_Tick_NoPipeline_KeepsFeaturesNil(t *testing.T) {
+	data := gameAt(600)
+	var err error
+	client := newTestClient(&data, &err)
+	reg := hooks.NewRegistry()
+	reg.Register(&hooks.Periodic5MinHook{})
+	j := &mockJudge{responses: []types.JudgeResponse{{Advice: "Recall."}}}
+	b := payload.NewBuilder("en")
+	orch := NewOrchestrator(client, reg, b, j, nil, nil)
+
+	// Baseline at 300, then fire at 600.
+	data.GameData.GameTime = 300
+	_, _ = orch.Tick(context.Background())
+	data.GameData.GameTime = 600
+	_, _ = orch.Tick(context.Background())
+
+	if j.lastReq.Features != nil {
+		t.Errorf("expected nil Features when pipeline disabled, got %+v", j.lastReq.Features)
+	}
+	if j.lastReq.Objectives.Order.Towers != 0 || j.lastReq.Objectives.Chaos.Towers != 0 {
+		t.Errorf("expected zero legacy Objectives when pipeline disabled, got %+v", j.lastReq.Objectives)
+	}
+}
+
 func gameAt(seconds float64) riotclient.AllGameData {
 	return riotclient.AllGameData{
 		ActivePlayer: riotclient.ActivePlayer{
@@ -183,6 +266,7 @@ func gameAt(seconds float64) riotclient.AllGameData {
 				Scores:       riotclient.PlayerScores{},
 			},
 		},
+		Events:   riotclient.Events{Events: []riotclient.Event{{EventID: 0, EventName: "GameStart", EventTime: 0}}},
 		GameData: riotclient.GameData{GameMode: "CLASSIC", GameTime: seconds},
 	}
 }

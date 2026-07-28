@@ -1,0 +1,345 @@
+{
+  "activePlayer": {
+    "abilities": {
+      "E": {
+        "abilityLevel": 3,
+        "displayName": "Molten Shield",
+        "id": "AnnieE",
+        "rawDescription": "GeneratedTip_Spell_AnnieE_Description",
+        "rawDisplayName": "GeneratedTip_Spell_AnnieE_DisplayName"
+      },
+      "Passive": {
+        "displayName": "Pyromania",
+        "id": "AnniePassive",
+        "rawDescription": "GeneratedTip_Passive_AnniePassive_Description",
+        "rawDisplayName": "GeneratedTip_Passive_AnniePassive_DisplayName"
+      },
+      "Q": {
+        "abilityLevel": 5,
+        "displayName": "Disintegrate",
+        "id": "AnnieQ",
+        "rawDescription": "GeneratedTip_Spell_AnnieQ_Description",
+        "rawDisplayName": "GeneratedTip_Spell_AnnieQ_DisplayName"
+      },
+      "R": {
+        "abilityLevel": 1,
+        "displayName": "Summon: Tibbers",
+        "id": "AnnieR",
+        "rawDescription": "GeneratedTip_Spell_AnnieR_Description",
+        "rawDisplayName": "GeneratedTip_Spell_AnnieR_DisplayName"
+      },
+      "W": {
+        "abilityLevel": 4,
+        "displayName": "Incinerate",
+        "id": "AnnieW",
+        "rawDescription": "GeneratedTip_Spell_AnnieW_Description",
+        "rawDisplayName": "GeneratedTip_Spell_AnnieW_DisplayName"
+      }
+    },
+    "championStats": {
+      "abilityPower": 120.00000000000000,
+      "armor": 72.00000000000000,
+      "armorPenetrationFlat": 0.0,
+      "armorPenetrationPercent": 0.0,
+      "attackDamage": 80.00000000000000,
+      "attackRange": 625.0,
+      "attackSpeed": 1.00000000000000,
+      "bonusArmorPenetrationPercent": 0.0,
+      "bonusMagicPenetrationPercent": 0.0,
+      "cooldownReduction": 0.00,
+      "critChance": 0.0,
+      "critDamage": 0.0,
+      "currentHealth": 950.0,
+      "healthRegenRate": 6.00000000000000,
+      "lifeSteal": 0.0,
+      "magicLethality": 0.0,
+      "magicPenetrationFlat": 0.0,
+      "magicPenetrationPercent": 0.0,
+      "magicResist": 40.00000000000000,
+      "maxHealth": 1100.00000000000000,
+      "moveSpeed": 335.00000000000000,
+      "physicalLethality": 0.0,
+      "resourceMax": 800.00000000000000,
+      "resourceRegenRate": 8.00000000000000,
+      "resourceType": "MANA",
+      "resourceValue": 600.00000000000000,
+      "spellVamp": 0.0,
+      "tenacity": 0.0
+    },
+    "currentGold": 4500.00000000000000,
+    "fullRunes": {
+      "generalRunes": [
+        {
+          "displayName": "Electrocute",
+          "id": 8112,
+          "rawDescription": "perk_tooltip_Electrocute",
+          "rawDisplayName": "perk_displayname_Electrocute"
+        },
+        {
+          "displayName": "Cheap Shot",
+          "id": 8126,
+          "rawDescription": "perk_tooltip_CheapShot",
+          "rawDisplayName": "perk_displayname_CheapShot"
+        },
+        {
+          "displayName": "Eyeball Collection",
+          "id": 8138,
+          "rawDescription": "perk_tooltip_EyeballCollection",
+          "rawDisplayName": "perk_displayname_EyeballCollection"
+        },
+        {
+          "displayName": "Relentless Hunter",
+          "id": 8105,
+          "rawDescription": "perk_tooltip_8105",
+          "rawDisplayName": "perk_displayname_8105"
+        },
+        {
+          "displayName": "Celerity",
+          "id": 8234,
+          "rawDescription": "perk_tooltip_Celerity",
+          "rawDisplayName": "perk_displayname_Celerity"
+        },
+        {
+          "displayName": "Gathering Storm",
+          "id": 8236,
+          "rawDescription": "perk_tooltip_GatheringStorm",
+          "rawDisplayName": "perk_displayname_GatheringStorm"
+        }
+      ],
+      "keystone": {
+        "displayName": "Electrocute",
+        "id": 8112,
+        "rawDescription": "perk_tooltip_Electrocute",
+        "rawDisplayName": "perk_displayname_Electrocute"
+      },
+      "primaryRuneTree": {
+        "displayName": "Domination",
+        "id": 8100,
+        "rawDescription": "perkstyle_tooltip_7200",
+        "rawDisplayName": "perkstyle_displayname_7200"
+      },
+      "secondaryRuneTree": {
+        "displayName": "Sorcery",
+        "id": 8200,
+        "rawDescription": "perkstyle_tooltip_7202",
+        "rawDisplayName": "perkstyle_displayname_7202"
+      },
+      "statRunes": [
+        {
+          "id": 5008,
+          "rawDescription": "perk_tooltip_StatModAdaptive"
+        },
+        {
+          "id": 5003,
+          "rawDescription": "perk_tooltip_StatModMagicResist"
+        },
+        {
+          "id": 5003,
+          "rawDescription": "perk_tooltip_StatModMagicResist"
+        }
+      ]
+    },
+    "level": 9,
+    "summonerName": "Riot Tuxedo"
+  },
+  "allPlayers": [
+    {
+      "championName": "Annie",
+      "isBot": false,
+      "isDead": false,
+      "items": [
+        {
+          "canUse": true,
+          "consumable": false,
+          "count": 1,
+          "displayName": "Doran's Ring",
+          "itemID": 1056,
+          "price": 400,
+          "rawDescription": "GeneratedTip_Item_1056_Description",
+          "rawDisplayName": "GeneratedTip_Item_1056_DisplayName",
+          "slot": 0
+        },
+        {
+          "canUse": false,
+          "consumable": false,
+          "count": 1,
+          "displayName": "Sorcerer's Shoes",
+          "itemID": 3020,
+          "price": 1100,
+          "rawDescription": "GeneratedTip_Item_3020_Description",
+          "rawDisplayName": "GeneratedTip_Item_3020_DisplayName",
+          "slot": 1
+        }
+      ],
+      "level": 9,
+      "position": "MIDDLE",
+      "rawChampionName": "game_character_displayname_Annie",
+      "respawnTimer": 0.0,
+      "runes": {
+        "keystone": {
+          "displayName": "Electrocute",
+          "id": 8112,
+          "rawDescription": "perk_tooltip_Electrocute",
+          "rawDisplayName": "perk_displayname_Electrocute"
+        },
+        "primaryRuneTree": {
+          "displayName": "Domination",
+          "id": 8100,
+          "rawDescription": "perkstyle_tooltip_7200",
+          "rawDisplayName": "perkstyle_displayname_7200"
+        },
+        "secondaryRuneTree": {
+          "displayName": "Sorcery",
+          "id": 8200,
+          "rawDescription": "perkstyle_tooltip_7202",
+          "rawDisplayName": "perkstyle_displayname_7202"
+        }
+      },
+      "scores": {
+        "assists": 1,
+        "creepScore": 82,
+        "deaths": 2,
+        "kills": 1,
+        "wardScore": 5.0
+      },
+      "skinID": 0,
+      "riotId": "Riot Tuxedo#1234",
+      "riotIdGameName": "Riot Tuxedo",
+      "riotIdTagLine": "1234",
+      "summonerName": "Riot Tuxedo",
+      "summonerSpells": {
+        "summonerSpellOne": {
+          "displayName": "Flash",
+          "rawDescription": "GeneratedTip_SummonerSpell_SummonerFlash_Description",
+          "rawDisplayName": "GeneratedTip_SummonerSpell_SummonerFlash_DisplayName"
+        },
+        "summonerSpellTwo": {
+          "displayName": "Ignite",
+          "rawDescription": "GeneratedTip_SummonerSpell_SummonerDot_Description",
+          "rawDisplayName": "GeneratedTip_SummonerSpell_SummonerDot_DisplayName"
+        }
+      },
+      "team": "ORDER"
+    },
+    {
+      "championName": "Ahri",
+      "isBot": false,
+      "isDead": true,
+      "items": [
+        {
+          "canUse": false,
+          "consumable": false,
+          "count": 1,
+          "displayName": "Lost Chapter",
+          "itemID": 3802,
+          "price": 1100,
+          "rawDescription": "GeneratedTip_Item_3802_Description",
+          "rawDisplayName": "GeneratedTip_Item_3802_DisplayName",
+          "slot": 0
+        }
+      ],
+      "level": 10,
+      "position": "MIDDLE",
+      "rawChampionName": "game_character_displayname_Ahri",
+      "respawnTimer": 28.5,
+      "runes": {
+        "keystone": {
+          "displayName": "Electrocute",
+          "id": 8112,
+          "rawDescription": "perk_tooltip_Electrocute",
+          "rawDisplayName": "perk_displayname_Electrocute"
+        },
+        "primaryRuneTree": {
+          "displayName": "Domination",
+          "id": 8100,
+          "rawDescription": "perkstyle_tooltip_7200",
+          "rawDisplayName": "perkstyle_displayname_7200"
+        },
+        "secondaryRuneTree": {
+          "displayName": "Sorcery",
+          "id": 8200,
+          "rawDescription": "perkstyle_tooltip_7202",
+          "rawDisplayName": "perkstyle_displayname_7202"
+        }
+      },
+      "scores": {
+        "assists": 2,
+        "creepScore": 95,
+        "deaths": 1,
+        "kills": 3,
+        "wardScore": 3.0
+      },
+      "skinID": 0,
+      "riotId": "Enemy Ahri#5678",
+      "riotIdGameName": "Enemy Ahri",
+      "riotIdTagLine": "5678",
+      "summonerName": "Enemy Ahri",
+      "summonerSpells": {
+        "summonerSpellOne": {
+          "displayName": "Flash",
+          "rawDescription": "GeneratedTip_SummonerSpell_SummonerFlash_Description",
+          "rawDisplayName": "GeneratedTip_SummonerSpell_SummonerFlash_DisplayName"
+        },
+        "summonerSpellTwo": {
+          "displayName": "Teleport",
+          "rawDescription": "GeneratedTip_SummonerSpell_SummonerTeleport_Description",
+          "rawDisplayName": "GeneratedTip_SummonerSpell_SummonerTeleport_DisplayName"
+        }
+      },
+      "team": "CHAOS"
+    }
+  ],
+  "events": {
+    "Events": [
+      {
+        "EventID": 0,
+        "EventName": "GameStart",
+        "EventTime": 0.00000000000000000
+      },
+      {
+        "EventID": 1,
+        "EventName": "FirstBrick",
+        "EventTime": 301.0,
+        "KillerName": "Enemy Ahri"
+      },
+      {
+        "EventID": 2,
+        "EventName": "DragonKill",
+        "EventTime": 312.0,
+        "DragonType": "Infernal",
+        "Stolen": "True",
+        "KillerName": "Enemy Ahri",
+        "Assisters": ["Enemy Ahri"]
+      },
+      {
+        "EventID": 3,
+        "EventName": "TurretKilled",
+        "EventTime": 315.0,
+        "TurretKilled": "Turret_T1_C_05_A",
+        "KillerName": "Enemy Ahri",
+        "Assisters": ["Enemy Ahri"]
+      },
+      {
+        "EventID": 4,
+        "EventName": "ChampionKill",
+        "EventTime": 320.0,
+        "VictimName": "Riot Tuxedo",
+        "KillerName": "Enemy Ahri",
+        "Assisters": ["Enemy Ahri"]
+      },
+      {
+        "EventID": 5,
+        "EventName": "Ace",
+        "EventTime": 330.0,
+        "AcingTeam": "CHAOS"
+      }
+    ]
+  },
+  "gameData": {
+    "gameMode": "CLASSIC",
+    "gameTime": 612.0,
+    "mapName": "Map11",
+    "mapNumber": 11,
+    "mapTerrain": "Default"
+  }
+}

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`008-timeseries-feature-engineering`**: Time-series feature pipeline for the Judge.
+  - `internal/features` package with ring-buffer tracker, `Window` interface, and pluggable transformers.
+  - `gold/min`, `XP/min` (level-derived), 1-minute / 5-minute deltas, item/level spikes, lane matchup diffs, and objective/death-timer features.
+  - Objective ground truth derived from enriched `riotclient.Event` fields (`DragonType`, `Stolen`, `KillerName`, `TurretKilled`, `AcingTeam`, etc.).
+  - `LOL_FEATURES_ENABLED` environment variable (default `false`) for zero-regression toggle.
+  - `features.jsonl` output under the session directory when both recording and features are enabled.
+  - Legacy `JudgeRequest.Objectives` populated from the new feature vector only when the pipeline is enabled.
+
 - **`002-cli-menu-judge-env`**: Interactive CLI menu and BYOK Judge configuration.
   - `OPENROUTER_MODEL` environment variable to configure the LLM model used by the Judge (defaults to `openai/gpt-4o-mini`).
   - Feature menu (`internal/menu`) on startup with `[Rotas do SDK]` and `[Dicas do Jogo]` options.

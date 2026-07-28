@@ -154,7 +154,7 @@ func TestDaemon_TipRecordingCorrelatesWithTelemetry(t *testing.T) {
 		// rebuild with fake judge.
 		reg := d.reg
 		builder := d.builder
-		d.orch = orchestrator.NewOrchestrator(d.client, reg, builder, judge.NewJudge(fakeLLM{}))
+		d.orch = orchestrator.NewOrchestrator(d.client, reg, builder, judge.NewJudge(fakeLLM{}), nil, nil)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

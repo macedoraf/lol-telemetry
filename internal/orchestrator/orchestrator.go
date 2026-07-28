@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"lol-telemetry/internal/features"
 	"lol-telemetry/internal/hooks"
 	"lol-telemetry/internal/judge/payload"
 	"lol-telemetry/internal/types"
@@ -33,18 +34,23 @@ type Orchestrator struct {
 	registry  *hooks.Registry
 	builder   *payload.Builder
 	judge     Judge
+	pipeline  *features.Pipeline
+	tracker   *features.Tracker
 	prevData  riotclient.AllGameData
 	prevFired map[string]int64
 	lastErr   error
 }
 
 // NewOrchestrator creates a new orchestrator.
-func NewOrchestrator(provider *riotclient.Client, registry *hooks.Registry, builder *payload.Builder, j Judge) *Orchestrator {
+// pipeline and tracker may be nil to keep the legacy JudgeRequest unchanged.
+func NewOrchestrator(provider *riotclient.Client, registry *hooks.Registry, builder *payload.Builder, j Judge, pipeline *features.Pipeline, tracker *features.Tracker) *Orchestrator {
 	return &Orchestrator{
 		provider:  provider,
 		registry:  registry,
 		builder:   builder,
 		judge:     j,
+		pipeline:  pipeline,
+		tracker:   tracker,
 		prevFired: make(map[string]int64),
 	}
 }
@@ -97,6 +103,13 @@ func (o *Orchestrator) Tick(ctx context.Context) ([]Result, error) {
 			o.lastErr = err
 			continue
 		}
+		if o.pipeline != nil && o.tracker != nil {
+			fv := o.pipeline.Compute(o.tracker.Window())
+			req.Features = &fv
+			if active, ok := riotclient.FindActivePlayer(data); ok {
+				req.Objectives = objectivesFromFeatures(fv, active.Team)
+			}
+		}
 		resp, err := o.judge.Evaluate(ctx, req)
 		if err != nil {
 			o.lastErr = err
@@ -125,6 +138,29 @@ func (o *Orchestrator) reset() {
 		delete(o.prevFired, k)
 	}
 	o.prevData = riotclient.AllGameData{}
+	if o.tracker != nil {
+		o.tracker.Reset()
+	}
+}
+
+// objectivesFromFeatures maps the new feature objectives back to the legacy
+// TeamObjectives layout. It only runs when the feature pipeline is enabled.
+func objectivesFromFeatures(fv types.FeatureVector, allyTeam string) types.TeamObjectives {
+	ally := toObjectiveState(fv.Team.Objectives)
+	enemy := toObjectiveState(fv.Enemy.Objectives)
+	if allyTeam == "ORDER" {
+		return types.TeamObjectives{Order: ally, Chaos: enemy}
+	}
+	return types.TeamObjectives{Order: enemy, Chaos: ally}
+}
+
+func toObjectiveState(o types.ObjectiveCount) types.ObjectiveState {
+	return types.ObjectiveState{
+		Towers:  o.Towers,
+		Dragons: o.Dragons,
+		Barons:  o.Barons,
+		Heralds: o.Heralds,
+	}
 }
 
 // ResetHook clears the deduplication mark for a hook, preventing retroactive fire
