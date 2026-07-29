@@ -1,10 +1,9 @@
 name: Build Windows Artifact
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -24,19 +23,36 @@ jobs:
       - name: Run tests
         run: go test ./...
 
+      - name: Install osslsigncode
+        run: sudo apt-get update && sudo apt-get install -y osslsigncode
+
       - name: Build Windows artifacts
         run: make build-windows
 
-      - name: Upload Windows CLI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: lol-cli-windows
-          path: dist/lol-cli.exe
-          if-no-files-found: error
+      - name: Sign Windows artifacts
+        if: env.CODE_SIGN_PFX != ''
+        env:
+          CODE_SIGN_PFX: ${{ secrets.CODE_SIGN_PFX }}
+          CODE_SIGN_PASS: ${{ secrets.CODE_SIGN_PASS }}
+        run: |
+          echo "$CODE_SIGN_PFX" | base64 -d > dist/cert.pfx
+          osslsigncode sign -pkcs12 dist/cert.pfx -pass "$CODE_SIGN_PASS" \
+            -n "lol-telemetry" -i "https://github.com/rafael-macedo/lol-telemetry" \
+            -in dist/lol-cli.exe -out dist/lol-cli.exe.signed
+          osslsigncode sign -pkcs12 dist/cert.pfx -pass "$CODE_SIGN_PASS" \
+            -n "lol-telemetry" -i "https://github.com/rafael-macedo/lol-telemetry" \
+            -in dist/lol-daemon.exe -out dist/lol-daemon.exe.signed
+          mv dist/lol-cli.exe.signed dist/lol-cli.exe
+          mv dist/lol-daemon.exe.signed dist/lol-daemon.exe
+          rm -f dist/cert.pfx
+          echo "Artifacts signed"
 
-      - name: Upload Windows daemon artifact
+      - name: Package zip
+        run: cd dist && zip -9 lol-telemetry-windows-amd64.zip lol-cli.exe lol-daemon.exe
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lol-daemon-windows
-          path: dist/lol-daemon.exe
+          name: lol-telemetry-windows-amd64
+          path: dist/lol-telemetry-windows-amd64.zip
           if-no-files-found: error

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"lol-telemetry/internal/hooks"
 	"lol-telemetry/pkg/riotclient"
 )
 
@@ -169,4 +170,29 @@ func toEventMessages(events []riotclient.Event) []EventMessage {
 // GameMinute returns the current game minute from GameState.
 func (gs GameState) GameMinute() int {
 	return int(gs.GameTime) / 60
+}
+
+// ConfigView is the full runtime config exposed by GET /api/config.
+type ConfigView struct {
+	Judge JudgeConfigView `json:"judge"`
+	Hooks []hooks.HookView `json:"hooks"`
+}
+
+// JudgeConfigView holds the runtime-accessible judge configuration.
+type JudgeConfigView struct {
+	Language        string `json:"language"`
+	PromptOverride  string `json:"promptOverride"`
+	EffectivePrompt string `json:"effectivePrompt"`
+}
+
+// ConfigPatch is the partial-update body for PATCH /api/config.
+type ConfigPatch struct {
+	Judge *JudgeConfigPatch `json:"judge,omitempty"`
+	Hooks []hooks.HookPatch `json:"hooks,omitempty"`
+}
+
+// JudgeConfigPatch holds mutable judge fields for PATCH.
+type JudgeConfigPatch struct {
+	Language *string `json:"language,omitempty"`
+	Prompt   *string `json:"prompt,omitempty"`
 }

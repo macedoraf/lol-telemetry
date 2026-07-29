@@ -155,10 +155,22 @@ type AllPlayer struct {
 }
 
 // Event is a single game event from the events block.
+// Additional fields are additive and only present for specific event types.
 type Event struct {
 	EventID   int     `json:"EventID"`
 	EventName string  `json:"EventName"`
 	EventTime float64 `json:"EventTime"`
+
+	// ADITIVO (F-008): campos extras por tipo de evento, todos omitempty.
+	KillerName   string   `json:"KillerName,omitempty"`
+	VictimName   string   `json:"VictimName,omitempty"`
+	Assisters    []string `json:"Assisters,omitempty"`
+	DragonType   string   `json:"DragonType,omitempty"`
+	Stolen       string   `json:"Stolen,omitempty"`
+	TurretKilled string   `json:"TurretKilled,omitempty"`
+	InhibKilled  string   `json:"InhibKilled,omitempty"`
+	AcingTeam    string   `json:"AcingTeam,omitempty"`
+	KillStreak   int      `json:"KillStreak,omitempty"`
 }
 
 // Events is a container for the game event list.
@@ -181,4 +193,39 @@ type AllGameData struct {
 	AllPlayers   []AllPlayer  `json:"allPlayers"`
 	Events       Events       `json:"events"`
 	GameData     GameData     `json:"gameData"`
+}
+
+// FindActivePlayer returns the player whose summoner name matches the active player.
+func FindActivePlayer(data AllGameData) (AllPlayer, bool) {
+	name := data.ActivePlayer.SummonerName
+	for _, p := range data.AllPlayers {
+		if p.SummonerName == name {
+			return p, true
+		}
+	}
+	return AllPlayer{}, false
+}
+
+// FindOpponent returns the player on the opposite team with the same position.
+func FindOpponent(data AllGameData, position, activeTeam string) (AllPlayer, bool) {
+	if position == "" {
+		return AllPlayer{}, false
+	}
+	for _, p := range data.AllPlayers {
+		if p.Team != activeTeam && p.Position == position {
+			return p, true
+		}
+	}
+	return AllPlayer{}, false
+}
+
+// ItemCount returns the number of non-consumable, non-zero items a player has.
+func ItemCount(items []Item) int {
+	count := 0
+	for _, it := range items {
+		if it.ItemID != 0 && !it.Consumable {
+			count++
+		}
+	}
+	return count
 }

@@ -40,44 +40,85 @@ func (PlayerDeathHook) Instruction() string {
 }
 func (PlayerDeathHook) CurrentMark(float64) int64 { return 0 }
 func (PlayerDeathHook) ShouldFire(ctx types.HookContext) (bool, error) {
-	active, ok := findActivePlayer(ctx.Data)
+	active, ok := riotclient.FindActivePlayer(ctx.Data)
 	if !ok {
 		return false, fmt.Errorf("active player not found")
 	}
-	prevActive, _ := findActivePlayer(ctx.PrevData)
+	prevActive, _ := riotclient.FindActivePlayer(ctx.PrevData)
 	return active.IsDead && (!prevActive.IsDead || prevActive.SummonerName == ""), nil
 }
 
 // RecallHook fires when the active player has accumulated enough unspent gold for a key item.
-// It is a simple heuristic: >1000 gold and no recent item change.
-type RecallHook struct{}
+type RecallHook struct {
+	GoldThreshold      float64
+	MinGameTimeSeconds float64
+}
 
-func (RecallHook) Name() string { return RecallHookName }
-func (RecallHook) Instruction() string {
+func (h *RecallHook) Name() string { return RecallHookName }
+func (h *RecallHook) Instruction() string {
 	return "I have a lot of unspent gold. Should I recall now, or keep farming/pressuring?"
 }
-func (RecallHook) CurrentMark(float64) int64 { return 0 }
-func (RecallHook) ShouldFire(ctx types.HookContext) (bool, error) {
-	active, ok := findActivePlayer(ctx.Data)
+func (h *RecallHook) CurrentMark(float64) int64 { return 0 }
+func (h *RecallHook) goldThreshold() float64 {
+	if h.GoldThreshold > 0 {
+		return h.GoldThreshold
+	}
+	return 1000
+}
+func (h *RecallHook) minGameTime() float64 {
+	if h.MinGameTimeSeconds > 0 {
+		return h.MinGameTimeSeconds
+	}
+	return 60
+}
+func (h *RecallHook) ShouldFire(ctx types.HookContext) (bool, error) {
+	active, ok := riotclient.FindActivePlayer(ctx.Data)
 	if !ok {
 		return false, fmt.Errorf("active player not found")
 	}
 	if active.IsDead {
 		return false, nil
 	}
-	prevActive, hadPrev := findActivePlayer(ctx.PrevData)
+	prevActive, hadPrev := riotclient.FindActivePlayer(ctx.PrevData)
+	threshold := h.goldThreshold()
 	gold := ctx.Data.ActivePlayer.CurrentGold
-	if gold < 1000 {
+	if gold < threshold {
 		return false, nil
 	}
 	if !hadPrev || prevActive.SummonerName == "" {
 		return false, nil
 	}
-	if ctx.Data.GameData.GameTime < 60 {
+	if ctx.Data.GameData.GameTime < h.minGameTime() {
 		return false, nil
 	}
-	// Avoid spam: only fire if gold crossed the threshold since last tick.
-	return ctx.PrevData.ActivePlayer.CurrentGold < 1000, nil
+	return ctx.PrevData.ActivePlayer.CurrentGold < threshold, nil
+}
+
+// Configure implements Configurable.
+func (h *RecallHook) Configure(params map[string]any) error {
+	if v, ok := params["goldThreshold"]; ok {
+		f, ok2 := toFloat(v)
+		if !ok2 || f < 0 {
+			return fmt.Errorf("goldThreshold must be a number >= 0, got %v", v)
+		}
+		h.GoldThreshold = f
+	}
+	if v, ok := params["minGameTimeSeconds"]; ok {
+		f, ok2 := toFloat(v)
+		if !ok2 || f < 0 {
+			return fmt.Errorf("minGameTimeSeconds must be a number >= 0, got %v", v)
+		}
+		h.MinGameTimeSeconds = f
+	}
+	return nil
+}
+
+// Spec implements Configurable.
+func (h *RecallHook) Spec() map[string]ParamSpec {
+	return map[string]ParamSpec{
+		"goldThreshold":      {Type: "float", Default: 1000, Min: 0},
+		"minGameTimeSeconds": {Type: "float", Default: 60, Min: 0},
+	}
 }
 
 // AllyGoldSpikeHook fires when the active player buys a significant item, indicating a power spike.
@@ -89,15 +130,15 @@ func (AllyGoldSpikeHook) Instruction() string {
 }
 func (AllyGoldSpikeHook) CurrentMark(float64) int64 { return 0 }
 func (AllyGoldSpikeHook) ShouldFire(ctx types.HookContext) (bool, error) {
-	active, ok := findActivePlayer(ctx.Data)
+	active, ok := riotclient.FindActivePlayer(ctx.Data)
 	if !ok {
 		return false, fmt.Errorf("active player not found")
 	}
-	prevActive, hadPrev := findActivePlayer(ctx.PrevData)
+	prevActive, hadPrev := riotclient.FindActivePlayer(ctx.PrevData)
 	if !hadPrev || prevActive.SummonerName == "" {
 		return false, nil
 	}
-	return itemCount(active.Items) > itemCount(prevActive.Items), nil
+	return riotclient.ItemCount(active.Items) > riotclient.ItemCount(prevActive.Items), nil
 }
 
 // EnemyGoldSpikeHook fires when the lane opponent buys a new item or levels up significantly.
@@ -109,19 +150,19 @@ func (EnemyGoldSpikeHook) Instruction() string {
 }
 func (EnemyGoldSpikeHook) CurrentMark(float64) int64 { return 0 }
 func (EnemyGoldSpikeHook) ShouldFire(ctx types.HookContext) (bool, error) {
-	active, ok := findActivePlayer(ctx.Data)
+	active, ok := riotclient.FindActivePlayer(ctx.Data)
 	if !ok {
 		return false, fmt.Errorf("active player not found")
 	}
-	opponent := findOpponent(ctx.Data, active.Position, active.Team)
-	if opponent.SummonerName == "" {
+	opponent, ok := riotclient.FindOpponent(ctx.Data, active.Position, active.Team)
+	if !ok {
 		return false, nil
 	}
-	prevOpponent := findOpponent(ctx.PrevData, active.Position, active.Team)
-	if prevOpponent.SummonerName == "" {
+	prevOpponent, ok := riotclient.FindOpponent(ctx.PrevData, active.Position, active.Team)
+	if !ok {
 		return false, nil
 	}
-	return itemCount(opponent.Items) > itemCount(prevOpponent.Items) || opponent.Level > prevOpponent.Level, nil
+	return riotclient.ItemCount(opponent.Items) > riotclient.ItemCount(prevOpponent.Items) || opponent.Level > prevOpponent.Level, nil
 }
 
 // FirstTurretHook fires when the first outer turret is destroyed.
@@ -136,16 +177,44 @@ func (FirstTurretHook) ShouldFire(ctx types.HookContext) (bool, error) {
 	return firstTurretEventOccurred(ctx.Data.Events.Events) && !firstTurretEventOccurred(ctx.PrevData.Events.Events), nil
 }
 
-// LaningPhaseEndHook fires once when the game reaches 14 minutes (laning phase typical end).
-type LaningPhaseEndHook struct{}
+// LaningPhaseEndHook fires once when the game reaches the configured mark (default 14min).
+type LaningPhaseEndHook struct {
+	MarkSeconds float64
+}
 
-func (LaningPhaseEndHook) Name() string { return LaningPhaseEndHookName }
-func (LaningPhaseEndHook) Instruction() string {
+func (h *LaningPhaseEndHook) Name() string { return LaningPhaseEndHookName }
+func (h *LaningPhaseEndHook) Instruction() string {
 	return "Laning phase is ending. Give one macro priority: rotate, group for objective, or secure side lane farm."
 }
-func (LaningPhaseEndHook) CurrentMark(float64) int64 { return 0 }
-func (LaningPhaseEndHook) ShouldFire(ctx types.HookContext) (bool, error) {
-	return ctx.GameTime >= 840 && ctx.PrevData.GameData.GameTime < 840, nil
+func (h *LaningPhaseEndHook) CurrentMark(float64) int64 { return 0 }
+func (h *LaningPhaseEndHook) mark() float64 {
+	if h.MarkSeconds > 0 {
+		return h.MarkSeconds
+	}
+	return 840
+}
+func (h *LaningPhaseEndHook) ShouldFire(ctx types.HookContext) (bool, error) {
+	m := h.mark()
+	return ctx.GameTime >= m && ctx.PrevData.GameData.GameTime < m, nil
+}
+
+// Configure implements Configurable.
+func (h *LaningPhaseEndHook) Configure(params map[string]any) error {
+	if v, ok := params["markSeconds"]; ok {
+		f, ok2 := toFloat(v)
+		if !ok2 || f < 0 {
+			return fmt.Errorf("markSeconds must be a number >= 0, got %v", v)
+		}
+		h.MarkSeconds = f
+	}
+	return nil
+}
+
+// Spec implements Configurable.
+func (h *LaningPhaseEndHook) Spec() map[string]ParamSpec {
+	return map[string]ParamSpec{
+		"markSeconds": {Type: "float", Default: 840, Min: 0},
+	}
 }
 
 func firstTurretEventOccurred(events []riotclient.Event) bool {
@@ -155,36 +224,4 @@ func firstTurretEventOccurred(events []riotclient.Event) bool {
 		}
 	}
 	return false
-}
-
-func itemCount(items []riotclient.Item) int {
-	count := 0
-	for _, it := range items {
-		if it.ItemID != 0 && !it.Consumable {
-			count++
-		}
-	}
-	return count
-}
-
-func findActivePlayer(data riotclient.AllGameData) (riotclient.AllPlayer, bool) {
-	name := data.ActivePlayer.SummonerName
-	for _, p := range data.AllPlayers {
-		if p.SummonerName == name {
-			return p, true
-		}
-	}
-	return riotclient.AllPlayer{}, false
-}
-
-func findOpponent(data riotclient.AllGameData, position, activeTeam string) riotclient.AllPlayer {
-	if position == "" {
-		return riotclient.AllPlayer{}
-	}
-	for _, p := range data.AllPlayers {
-		if p.Team != activeTeam && p.Position == position {
-			return p
-		}
-	}
-	return riotclient.AllPlayer{}
 }

@@ -126,6 +126,55 @@ To enable offline development, unit testing, and TDD without requiring an active
 | `JUDGE_ENABLED` | `true` if key is set | Toggle Judge |
 | `LOL_CLI_LOG` | — | Override CLI log path |
 | `LOL_DAEMON_LOG` | — | Override daemon log path |
+| `LOL_RECORD_ENABLED` | `false` | Persist raw telemetry snapshots to disk |
+| `LOL_RECORDINGS_DIR` | `./recordings` | Base directory for recorded sessions |
+| `LOL_FEATURES_ENABLED` | `false` | Compute and send time-series features to the Judge; writes `features.jsonl` when recording is enabled |
+| `EDITOR` | — | External editor for the TUI prompt editor |
+
+### PATCH judge prompt
+
+```bash
+curl -X PATCH http://localhost:8080/api/config \
+  -H 'Content-Type: application/json' \
+  -d '{"judge":{"prompt":"Focus only on dragon control."}}'
+```
+
+* Validation: non-empty and ≤ 4000 characters after trimming. Empty string resets to default.
+* `GET /api/config` returns both `promptOverride` (user value) and `effectivePrompt` (value sent to the LLM, including the language directive).
+
+### Recording format
+
+When `LOL_RECORD_ENABLED=true`, each game session is written to `<LOL_RECORDINGS_DIR>/<sessionID>/telemetry.jsonl` as one JSON object per line:
+
+```json
+{"v":1,"type":"telemetry","ts":1750000000000,"session":"20260727-143012-a1b2c3","gameTime":612.4,"data":{...allgamedata bruto...}}
+```
+
+* `sessionID` = `YYYYMMDD-HHMMSS-hex12`, generated when the daemon first sees `gameTime > 0`.
+* A new session is also created when `gameTime` goes backwards, indicating a new match.
+* If the write channel backs up, records are dropped and counted; the poll loop never blocks.
+
+### Judge tips
+
+When `LOL_RECORD_ENABLED=true` and a Judge hook fires, a line is appended to `<sessionID>/tips.jsonl`:
+
+```json
+{"v":1,"type":"tip","ts":17500000001234,"session":"20260727-143012-a1b2c3","gameTime":612.4,"gameMinute":10,"hookName":"periodic-5min","question":"Evaluate the current macro state...","advice":"...","reasoning":"..."}
+```
+
+When both `LOL_RECORD_ENABLED=true` and `LOL_FEATURES_ENABLED=true`, a line is appended to `<sessionID>/features.jsonl` on every Judge trigger and at every full 60-second game mark:
+
+```json
+{"v":1,"type":"features","ts":17500000001234,"session":"20260727-143012-a1b2c3","gameTime":612.4,"gameMinute":10,"features":{"gameMinute":10,"windowSec":60,"samples":60,"player":{...},"allyTeam":{...},"enemyTeam":{...},"matchup":{...}}}
+```
+
+Correlation with telemetry is by `(session, gameTime)`:
+
+```bash
+SESSION=20260727-143012-a1b2c3
+TIP_TIME=612.4
+jq -c "select(.session==\"$SESSION\" and (.gameTime - $TIP_TIME | . * . < 1))" recordings/$SESSION/telemetry.jsonl
+```
 
 ## 6. Troubleshooting & Logs
 

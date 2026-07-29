@@ -18,6 +18,17 @@ go run ./cmd/lol-daemon
 go run ./cmd/lol-cli
 ```
 
+### Runtime Configuration API
+
+The daemon exposes `GET /api/config` and `PATCH /api/config` to inspect and modify the judge language, hook enable states, and hook parameters at runtime.
+
+```bash
+curl http://localhost:8080/api/config
+curl -X PATCH http://localhost:8080/api/config \
+  -H 'Content-Type: application/json' \
+  -d '{"judge":{"language":"pt-BR"},"hooks":[{"name":"periodic-5min","enabled":false}]}'
+```
+
 ### Judge Configuration (Bring Your Own Key)
 The optional LLM Judge is powered by [OpenRouter](https://openrouter.ai) and configured through environment variables:
 
@@ -25,6 +36,10 @@ The optional LLM Judge is powered by [OpenRouter](https://openrouter.ai) and con
 | :--- | :--- | :--- |
 | `OPENROUTER_API_KEY` | Yes | Your OpenRouter API key. |
 | `OPENROUTER_MODEL` | No | Model to use. Defaults to `openai/gpt-4o-mini`. |
+| `JUDGE_LANGUAGE` | No | Language for Judge advice tips. One of `en`, `pt-BR`, `es`. Defaults to `en`. |
+| `LOL_RECORD_ENABLED` | No | Persist raw Live Client Data API snapshots to disk as append-only JSONL. Defaults to `false`. |
+| `LOL_FEATURES_ENABLED` | No | Compute time-series features (gold/min, XP/min, objectives, death timers, matchup diffs) and send them to the Judge. Writes `features.jsonl` when recording is enabled. Defaults to `false`. |
+| `LOL_RECORDINGS_DIR` | No | Directory for recorded sessions. Defaults to `./recordings`. |
 
 Example:
 ```bash
@@ -34,6 +49,74 @@ go run ./cmd/lol-daemon
 ```
 
 When the key is absent, the Judge loop is disabled.
+
+### Runtime Judge Prompt Editing
+
+You can change the Judge system prompt at runtime without restarting the daemon:
+
+```bash
+curl -X PATCH http://localhost:8080/api/config \
+  -H 'Content-Type: application/json' \
+  -d '{"judge":{"prompt":"Focus only on objective control and rotations."}}'
+```
+
+Rules:
+
+* The prompt must be non-empty and ≤ 4000 characters.
+* `{"judge":{"prompt":""}}` restores the default prompt.
+* The language directive from `JUDGE_LANGUAGE` is always appended to the effective prompt.
+
+From the test TUI (`go run ./cmd/lol-cli`), open the **Config** tab and type `/prompt` followed by Enter to edit the prompt in `$EDITOR`.
+
+### Telemetry Recording
+
+You can persist every raw `/allgamedata` snapshot to disk for later analysis or for training future Judge features:
+
+```bash
+export LOL_RECORD_ENABLED=true
+export LOL_RECORDINGS_DIR=./recordings
+
+go run ./cmd/lol-daemon
+```
+
+Each match gets its own directory under `<recordingsDir>/<sessionID>/`:
+
+```
+recordings/
+  20260727-143012-a1b2c3/
+    telemetry.jsonl
+```
+
+Each line is a self-contained JSON object:
+
+```json
+{"v":1,"type":"telemetry","ts":1750000000000,"session":"20260727-143012-a1b2c3","gameTime":612.4,"data":{...allgamedata bruto...}}
+```
+
+Read it back with `jq`:
+
+```bash
+jq -c 'select(.gameTime > 300)' recordings/20260727-143012-a1b2c3/telemetry.jsonl
+```
+
+When the Judge fires, a tip is also recorded in the same session directory:
+
+```
+recordings/
+  20260727-143012-a1b2c3/
+    telemetry.jsonl
+    tips.jsonl
+```
+
+Join tips to telemetry by `(session, gameTime)`:
+
+```bash
+SESSION=20260727-143012-a1b2c3
+TIP_TIME=612.4
+jq -c "select(.session==\"$SESSION\" and (.gameTime - $TIP_TIME | . * . < 1))" recordings/$SESSION/telemetry.jsonl
+```
+
+Recording is fully asynchronous: if disk I/O falls behind, frames are dropped and counted, but the live poll loop is never blocked.
 
 ## Examples & Use Cases
 

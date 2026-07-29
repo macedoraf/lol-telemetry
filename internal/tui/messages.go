@@ -22,3 +22,19 @@ type EventMsg service.EventMessage
 
 // RawMsg carries a raw WS envelope for the log view.
 type RawMsg service.WSMessage
+
+// ConfigLoadedMsg carries the runtime config for the Config tab.
+type ConfigLoadedMsg service.ConfigView
+
+// ConfigErrorMsg carries a config-load or config-save error.
+type ConfigErrorMsg struct{ Error string }
+
+// ConfigSavedMsg is sent after a successful PATCH.
+type ConfigSavedMsg service.ConfigView
+
+// PromptEditorResultMsg is sent after the external editor exits.
+type PromptEditorResultMsg struct {
+	Path    string
+	Content string
+	Err     error
+}

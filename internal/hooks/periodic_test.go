@@ -86,9 +86,50 @@ func TestPeriodic5MinHook_ShouldFire(t *testing.T) {
 	}
 }
 
+func TestPeriodic5MinHook_Configure_Interval(t *testing.T) {
+	h := &Periodic5MinHook{}
+
+	// default
+	if h.interval() != 300 {
+		t.Errorf("default interval = %d, want 300", h.interval())
+	}
+
+	// configure with valid value
+	if err := h.Configure(map[string]any{"intervalSeconds": float64(120)}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if h.IntervalSeconds != 120 {
+		t.Errorf("interval = %d, want 120", h.IntervalSeconds)
+	}
+
+	// mark uses the new interval
+	ctx := types.HookContext{
+		GameTime:  240,
+		PrevFired: map[string]int64{PeriodicHookName: 120},
+	}
+	fire, err := h.ShouldFire(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !fire {
+		t.Errorf("expected to fire at 240s with 120s interval")
+	}
+
+	// configure with invalid value (below min)
+	if err := h.Configure(map[string]any{"intervalSeconds": float64(30)}); err == nil {
+		t.Error("expected error for interval < 60")
+	}
+
+	// spec returns schema
+	spec := h.Spec()
+	if _, ok := spec["intervalSeconds"]; !ok {
+		t.Error("spec missing intervalSeconds")
+	}
+}
+
 func TestRegistry_Evaluate(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(Periodic5MinHook{})
+	reg.Register(&Periodic5MinHook{})
 
 	ctx := types.HookContext{
 		GameTime:  600,

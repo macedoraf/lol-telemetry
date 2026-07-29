@@ -18,9 +18,11 @@
   - New feature: `.opencode/commands/workflow-new-feature.md`
   - Execute feature: `.opencode/commands/execute-feature.md`
 - **Detailed Docs (docs/):**
+  - Roadmap: `docs/roadmap.md`
   - Feature tracking: `docs/features/tracking.md`
   - Feature `001-periodic-judge-hook` specs: `docs/features/001-periodic-judge-hook-functional.md`, `docs/features/001-periodic-judge-hook-technical.md`, `docs/features/001-periodic-judge-hook-testing.md`
   - Feature `002-cli-menu-judge-env` specs: `docs/features/002-cli-menu-judge-env-functional.md`, `docs/features/002-cli-menu-judge-env-technical.md`, `docs/features/002-cli-menu-judge-env-testing.md`
+  - Roadmap features (execute in order): `docs/features/003-judge-tip-language-tasks.md`, `004-runtime-trigger-config-tasks.md`, `005-telemetry-recording-tasks.md`, `006-runtime-prompt-editing-tasks.md`, `007-judge-tip-persistence-tasks.md`, `008-timeseries-feature-engineering-tasks.md`
   - API Contracts & Mocks: `docs/api-contract.md`
   - Testing Scenarios: `docs/testing.md`
   - Changelog: `CHANGELOG.md`

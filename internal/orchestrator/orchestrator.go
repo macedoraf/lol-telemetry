@@ -5,18 +5,15 @@ import (
 	"context"
 	"fmt"
 
+	"lol-telemetry/internal/features"
 	"lol-telemetry/internal/hooks"
 	"lol-telemetry/internal/judge/payload"
 	"lol-telemetry/internal/types"
 	"lol-telemetry/pkg/riotclient"
 )
 
-// GameDataProvider abstracts the source of live game snapshots.
-type GameDataProvider interface {
-	GetGameData() (riotclient.AllGameData, error)
-}
-
 // Judge evaluates a JudgeRequest and returns a JudgeResponse.
+// ponytail: kept as a local interface so tests can inject a fake LLM.
 type Judge interface {
 	Evaluate(ctx context.Context, req types.JudgeRequest) (types.JudgeResponse, error)
 }
@@ -25,28 +22,35 @@ type Judge interface {
 type Result struct {
 	HookName   string
 	GameMinute int
+	GameTime   float64
+	Question   string
 	Advice     string
 	Reasoning  string
 }
 
 // Orchestrator runs the periodic evaluation loop.
 type Orchestrator struct {
-	provider  GameDataProvider
+	provider  *riotclient.Client
 	registry  *hooks.Registry
 	builder   *payload.Builder
 	judge     Judge
+	pipeline  *features.Pipeline
+	tracker   *features.Tracker
 	prevData  riotclient.AllGameData
 	prevFired map[string]int64
 	lastErr   error
 }
 
 // NewOrchestrator creates a new orchestrator.
-func NewOrchestrator(provider GameDataProvider, registry *hooks.Registry, builder *payload.Builder, j Judge) *Orchestrator {
+// pipeline and tracker may be nil to keep the legacy JudgeRequest unchanged.
+func NewOrchestrator(provider *riotclient.Client, registry *hooks.Registry, builder *payload.Builder, j Judge, pipeline *features.Pipeline, tracker *features.Tracker) *Orchestrator {
 	return &Orchestrator{
 		provider:  provider,
 		registry:  registry,
 		builder:   builder,
 		judge:     j,
+		pipeline:  pipeline,
+		tracker:   tracker,
 		prevFired: make(map[string]int64),
 	}
 }
@@ -88,12 +92,23 @@ func (o *Orchestrator) Tick(ctx context.Context) ([]Result, error) {
 		return nil, fmt.Errorf("evaluate hooks: %w", err)
 	}
 
+	if o.judge == nil {
+		return nil, nil
+	}
+
 	var results []Result
 	for _, trigger := range triggers {
 		req, err := o.builder.Build(data, trigger.Question)
 		if err != nil {
 			o.lastErr = err
 			continue
+		}
+		if o.pipeline != nil && o.tracker != nil {
+			fv := o.pipeline.Compute(o.tracker.Window())
+			req.Features = &fv
+			if active, ok := riotclient.FindActivePlayer(data); ok {
+				req.Objectives = objectivesFromFeatures(fv, active.Team)
+			}
 		}
 		resp, err := o.judge.Evaluate(ctx, req)
 		if err != nil {
@@ -103,11 +118,14 @@ func (o *Orchestrator) Tick(ctx context.Context) ([]Result, error) {
 		results = append(results, Result{
 			HookName:   trigger.HookName,
 			GameMinute: req.GameMinute,
+			GameTime:   gameTime,
+			Question:   trigger.Question,
 			Advice:     resp.Advice,
 			Reasoning:  resp.Reasoning,
 		})
-		mark := hooks.CurrentMark(gameTime)
-		o.prevFired[trigger.HookName] = mark
+		if hook, ok := o.registry.GetHook(trigger.HookName); ok {
+			o.prevFired[trigger.HookName] = hook.CurrentMark(gameTime)
+		}
 	}
 
 	o.lastErr = nil
@@ -120,4 +138,37 @@ func (o *Orchestrator) reset() {
 		delete(o.prevFired, k)
 	}
 	o.prevData = riotclient.AllGameData{}
+	if o.tracker != nil {
+		o.tracker.Reset()
+	}
+}
+
+// objectivesFromFeatures maps the new feature objectives back to the legacy
+// TeamObjectives layout. It only runs when the feature pipeline is enabled.
+func objectivesFromFeatures(fv types.FeatureVector, allyTeam string) types.TeamObjectives {
+	ally := toObjectiveState(fv.Team.Objectives)
+	enemy := toObjectiveState(fv.Enemy.Objectives)
+	if allyTeam == "ORDER" {
+		return types.TeamObjectives{Order: ally, Chaos: enemy}
+	}
+	return types.TeamObjectives{Order: enemy, Chaos: ally}
+}
+
+func toObjectiveState(o types.ObjectiveCount) types.ObjectiveState {
+	return types.ObjectiveState{
+		Towers:  o.Towers,
+		Dragons: o.Dragons,
+		Barons:  o.Barons,
+		Heralds: o.Heralds,
+	}
+}
+
+// ResetHook clears the deduplication mark for a hook, preventing retroactive fire
+// after configuration changes.
+func (o *Orchestrator) ResetHook(name string) {
+	if hook, ok := o.registry.GetHook(name); ok {
+		if data, err := o.provider.GetGameData(); err == nil {
+			o.prevFired[name] = hook.CurrentMark(data.GameData.GameTime)
+		}
+	}
 }
