@@ -12,7 +12,7 @@ import (
 	"lol-telemetry/internal/features"
 	"lol-telemetry/internal/hooks"
 	"lol-telemetry/internal/judge"
-	"lol-telemetry/internal/judge/openrouter"
+	"lol-telemetry/internal/judge/providers"
 	"lol-telemetry/internal/judge/payload"
 	"lol-telemetry/internal/orchestrator"
 	"lol-telemetry/internal/recorder"
@@ -48,6 +48,7 @@ type DaemonConfig struct {
 	BaseURL          string
 	PollInterval     time.Duration
 	JudgeEnabled     bool
+	JudgeProvider    string // openrouter, deepinfra, openai
 	OpenRouterKey    string
 	OpenRouterModel  string
 	Debug            bool
@@ -86,9 +87,17 @@ func NewDaemon(cfg DaemonConfig) *Daemon {
 	hub := NewHub()
 
 	var j *judge.Judge
-	if cfg.JudgeEnabled && cfg.OpenRouterKey != "" {
-		llmClient := openrouter.NewClientWithModel(cfg.OpenRouterKey, cfg.OpenRouterModel)
-		j = judge.NewJudge(llmClient)
+	if cfg.JudgeEnabled {
+		llmClient, err := providers.New(providers.Config{
+			Provider:        cfg.JudgeProvider,
+			OpenRouterKey:   cfg.OpenRouterKey,
+			OpenRouterModel: cfg.OpenRouterModel,
+		})
+		if err != nil {
+			log.Printf("judge provider %q failed: %v; judge disabled", cfg.JudgeProvider, err)
+		} else {
+			j = judge.NewJudge(llmClient)
+		}
 	}
 
 	reg := hooks.NewRegistry()
