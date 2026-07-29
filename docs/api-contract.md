@@ -121,8 +121,15 @@ To enable offline development, unit testing, and TDD without requiring an active
 | `LOL_DAEMON_PORT` | `8080` | WebSocket server port |
 | `LOL_POLL_INTERVAL` | `1s` | Live Client Data API polling interval |
 | `LOL_BASE_URL` | `https://127.0.0.1:2999/liveclientdata` | LoL API base URL |
-| `OPENROUTER_API_KEY` | — | API key for Judge |
-| `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Judge model |
+| `JUDGE_PROVIDER` | `openrouter` | LLM provider: `openrouter`, `deepinfra`, or `openai` |
+| `OPENROUTER_API_KEY` | — | API key for Judge when `JUDGE_PROVIDER=openrouter` |
+| `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Judge model for OpenRouter |
+| `DEEPINFRA_BASE_URL` | `https://api.deepinfra.com/v1/openai` | DeepInfra API base URL |
+| `DEEPINFRA_API_KEY` | — | API token for Judge when `JUDGE_PROVIDER=deepinfra` |
+| `DEEPINFRA_MODEL` | `deepseek-ai/DeepSeek-V3` | Judge model for DeepInfra |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI API base URL |
+| `OPENAI_API_KEY` | — | API key for Judge when `JUDGE_PROVIDER=openai` |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Judge model for OpenAI |
 | `JUDGE_ENABLED` | `true` if key is set | Toggle Judge |
 | `LOL_CLI_LOG` | — | Override CLI log path |
 | `LOL_DAEMON_LOG` | — | Override daemon log path |

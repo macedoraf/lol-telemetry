@@ -30,12 +30,19 @@ curl -X PATCH http://localhost:8080/api/config \
 ```
 
 ### Judge Configuration (Bring Your Own Key)
-The optional LLM Judge is powered by [OpenRouter](https://openrouter.ai) and configured through environment variables:
+The optional LLM Judge is provider-pluggable and speaks the OpenAI chat-completions format. Select the provider with `JUDGE_PROVIDER` and configure the corresponding variables.
 
 | Variable | Required | Description |
 | :--- | :--- | :--- |
-| `OPENROUTER_API_KEY` | Yes | Your OpenRouter API key. |
+| `JUDGE_PROVIDER` | No | `openrouter` (default), `deepinfra`, or `openai`. |
+| `OPENROUTER_API_KEY` | For `openrouter` | Your OpenRouter API key. |
 | `OPENROUTER_MODEL` | No | Model to use. Defaults to `openai/gpt-4o-mini`. |
+| `DEEPINFRA_BASE_URL` | No | DeepInfra API base URL. Defaults to `https://api.deepinfra.com/v1/openai`. |
+| `DEEPINFRA_API_KEY` | For `deepinfra` | Your DeepInfra API token. |
+| `DEEPINFRA_MODEL` | No | Model to use. Defaults to `deepseek-ai/DeepSeek-V3`. |
+| `OPENAI_BASE_URL` | No | OpenAI API base URL. Defaults to `https://api.openai.com/v1`. |
+| `OPENAI_API_KEY` | For `openai` | Your OpenAI API key. |
+| `OPENAI_MODEL` | No | Model to use. Defaults to `gpt-4o-mini`. |
 | `JUDGE_LANGUAGE` | No | Language for Judge advice tips. One of `en`, `pt-BR`, `es`. Defaults to `en`. |
 | `LOL_RECORD_ENABLED` | No | Persist raw Live Client Data API snapshots to disk as append-only JSONL. Defaults to `false`. |
 | `LOL_FEATURES_ENABLED` | No | Compute time-series features (gold/min, XP/min, objectives, death timers, matchup diffs) and send them to the Judge. Writes `features.jsonl` when recording is enabled. Defaults to `false`. |

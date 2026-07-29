@@ -30,6 +30,11 @@ func LoadDaemonConfigFromEnv() DaemonConfig {
 		}
 	}
 
+	provider := os.Getenv("JUDGE_PROVIDER")
+	if provider == "" {
+		provider = "openrouter"
+	}
+
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	model := os.Getenv("OPENROUTER_MODEL")
 	if model == "" {
@@ -37,7 +42,7 @@ func LoadDaemonConfigFromEnv() DaemonConfig {
 	}
 
 	judgeEnabled := os.Getenv("JUDGE_ENABLED") != "false"
-	if apiKey == "" {
+	if provider == "openrouter" && apiKey == "" {
 		judgeEnabled = false
 	}
 
@@ -61,6 +66,7 @@ func LoadDaemonConfigFromEnv() DaemonConfig {
 		BaseURL:          baseURL,
 		PollInterval:     interval,
 		JudgeEnabled:     judgeEnabled,
+		JudgeProvider:    provider,
 		OpenRouterKey:    apiKey,
 		OpenRouterModel:  model,
 		Debug:            debug,
